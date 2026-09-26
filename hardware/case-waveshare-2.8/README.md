@@ -42,8 +42,9 @@ Gniazda nie przechodzą przez dno obudowy.
 - zewnętrzny korpus: około 91,1×62,5×40,0 mm,
 - pełna wysokość po założeniu ramki: około 42,6 mm.
 
-Model udostępnia dokładnie jeden port hosta USB-A na krótkim boku po stronie
-czterech przycisków LCD. Na tej samej stronie pozostaje osobny otwór microSD.
+Model udostępnia dokładnie jeden port hosta USB-A na prawym krótkim boku,
+po przeciwnej stronie niż cztery przyciski LCD. Na tym samym prawym boku
+pozostaje osobny otwór microSD.
 Pozostałe trzy USB-A, USB-UART, mini-HDMI oraz oba microUSB Raspberry Pi są
 głęboko pod większą płytką LCD, dlatego wszystkie ich otwory usunięto.
 Pełna przednia ściana zostawia miejsce na późniejsze dodanie panelowego

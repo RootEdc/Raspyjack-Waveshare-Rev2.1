@@ -40,10 +40,10 @@ CONFIG = {
     "m25_socket_d": 3.2,
     "stud_socket_depth": 4.0,
     # Front-view coordinates match PHOTO_MEASUREMENTS.md: keys are on the
-    # left and the PCB origin is the upper-left corner.  The hardware photos
-    # of the rear must therefore be mirrored horizontally before comparison.
-    # Pi and HUB sit against the LCD's LEFT and TOP edges in the front view.
-    "stack_offset_x": -10.005,
+    # left and the PCB origin is the upper-left corner.  Pi and HUB sit at the
+    # RIGHT and TOP LCD edges.  USB-A and microSD are therefore opposite the
+    # keys, as confirmed directly by the user from the physical assembly.
+    "stack_offset_x": 10.005,
     "stack_offset_y": -13.22,
     # Cap / bezel.
     # Radial clearance: the gap on EACH side of the base, not a total gap.
@@ -147,14 +147,14 @@ def make_base():
 
     cutters = [cavity]
 
-    # The only accessible host USB-A is on the short edge beside the LCD keys.
+    # The only accessible host USB-A is on the short edge opposite LCD keys.
     # All other USB and service sockets are recessed below the larger LCD.
     cutters.append(box((c["wall"] * 3, 17.0, 12.0),
-                       (-outer_x / 2, c["stack_offset_y"], 24.0)))
+                       (outer_x / 2, c["stack_offset_y"], 24.0)))
 
     # microSD remains accessible at the aligned end of the Pi board.
     cutters.append(box((c["wall"] * 3, 17.0, 6.5),
-                       (-outer_x / 2, c["stack_offset_y"], 6.0)))
+                       (outer_x / 2, c["stack_offset_y"], 6.0)))
 
     # Bottom ventilation slots, kept away from the mounting pattern.
     for x in (-24.0, -16.0, -8.0, 0.0, 8.0, 16.0):

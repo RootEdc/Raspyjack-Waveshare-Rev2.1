@@ -95,12 +95,14 @@ def main():
         c["button_x"] + c["button_hole_x"] / 2
     )
     require(bridge >= 0.8, f"only {bridge:.2f} mm between keys and LCD opening")
-    require(c["stack_offset_x"] < 0 and c["stack_offset_y"] < 0,
-            "Pi/HUB must stay at the front-view left/top LCD edges")
+    require(c["stack_offset_x"] > 0 and c["stack_offset_y"] < 0,
+            "Pi/HUB must stay at the front-view right/top LCD edges")
     require(c["button_x"] < 0,
             "key side must remain the model's left side")
-    require(abs(c["stack_offset_x"] - c["pi_x"] / 2 + c["lcd_x"] / 2) < 1e-6,
-            "Pi/HUB left edge is not aligned with the LCD left edge")
+    require(c["button_x"] * c["stack_offset_x"] < 0,
+            "Pi/HUB and accessible ports must be opposite the keys")
+    require(abs(c["stack_offset_x"] + c["pi_x"] / 2 - c["lcd_x"] / 2) < 1e-6,
+            "Pi/HUB right edge is not aligned with the LCD right edge")
     require(abs(c["stack_offset_y"] - c["pi_y"] / 2 + c["lcd_y"] / 2) < 1e-6,
             "Pi/HUB top edge is not aligned with the LCD top edge")
     require(c["base_height"] >= 40.0,
@@ -121,22 +123,22 @@ def main():
         )
         require(volume > 5.0, f"lower long wall is unexpectedly open at x={x}")
 
-    # Only one USB-A and microSD are exposed on the LEFT/key short edge. The
-    # opposite edge remains behind a solid wall.
+    # USB-A and microSD are on the RIGHT short edge, opposite the keys. The
+    # left/key edge remains behind a solid wall.
     short_wall_probe = (c["wall"] - 0.4, 2.0, 2.0)
-    accessible_usb_volume = probe_volume(
+    key_side_volume = probe_volume(
         base, short_wall_probe,
         (-outer_x / 2 + c["wall"] / 2, c["stack_offset_y"], 24.0),
     )
-    require(accessible_usb_volume < 0.01, "accessible left USB opening is blocked")
-    opposite_usb_volume = probe_volume(
+    require(key_side_volume > 5.0, "key-side wall is unexpectedly open")
+    accessible_usb_volume = probe_volume(
         base, short_wall_probe,
         (outer_x / 2 - c["wall"] / 2, c["stack_offset_y"], 24.0),
     )
-    require(opposite_usb_volume > 5.0, "opposite USB wall is unexpectedly open")
+    require(accessible_usb_volume < 0.01, "opposite-key USB opening is blocked")
     microsd_volume = probe_volume(
         base, short_wall_probe,
-        (-outer_x / 2 + c["wall"] / 2, c["stack_offset_y"], 6.0),
+        (outer_x / 2 - c["wall"] / 2, c["stack_offset_y"], 6.0),
     )
     require(microsd_volume < 0.01, "microSD opening is blocked")
 
@@ -154,9 +156,9 @@ def main():
     print("PASS: assembled base and bezel have no solid collision")
     print("PASS: external dimensions match the parametric design")
     print("PASS: photo-derived LCD margins and key bridge are preserved")
-    print("PASS: Pi/HUB are aligned to the front-view left/top LCD edges")
+    print("PASS: Pi/HUB are aligned to the front-view right/top LCD edges")
     print("PASS: enclosure height clears the photographed board stack")
-    print("PASS: only left/key-side USB-A and microSD are exposed")
+    print("PASS: USB-A and microSD are right-side, opposite the keys")
     print("PASS: mounting sockets are open above and preserve a closed bottom")
 
 

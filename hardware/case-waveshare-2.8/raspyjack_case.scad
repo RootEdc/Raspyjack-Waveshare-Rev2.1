@@ -23,9 +23,9 @@ module shell() {
     rounded_box([outer.x, outer.y, base_h], corner_r);
     translate([0,0,floor_t])
       rounded_box([inner.x, inner.y, base_h], max(1,corner_r-wall));
-    // One USB-A and microSD on the left/key side; every other port enclosed.
-    translate([-outer.x/2,-13.22,24]) cube([3*wall,17,12],center=true);
-    translate([-outer.x/2,-13.22,6]) cube([3*wall,17,6.5], center=true);
+    // One USB-A and microSD on the right, opposite the keys.
+    translate([outer.x/2,-13.22,24]) cube([3*wall,17,12],center=true);
+    translate([outer.x/2,-13.22,6]) cube([3*wall,17,6.5], center=true);
   }
 }
 
@@ -40,7 +40,7 @@ module mounting_post(x,y) {
 module base() {
   union() {
     shell();
-    for(x=[-10.005-29,-10.005+29], y=[-13.22-11.5,-13.22+11.5])
+    for(x=[10.005-29,10.005+29], y=[-13.22-11.5,-13.22+11.5])
       mounting_post(x,y);
   }
 }
