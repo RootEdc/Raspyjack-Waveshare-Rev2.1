@@ -273,6 +273,23 @@ To switch screens, change `"type"` in `gui_conf.json` and reboot:
 
 ### Waveshare 2.8" ILI9341 / XPT2046
 
+#### 3D-printable enclosure for the 2.8" build
+
+A ready-to-print enclosure is included for the stack **Raspberry Pi Zero 2 W
+→ Waveshare 12694 USB HUB HAT → Waveshare 2.8" LCD Rev2.1**. The current model
+exposes one USB-A port and the microSD slot on the side opposite the four LCD
+buttons. The remaining recessed connectors stay behind solid walls; a panel
+microUSB power connector can be added after the first full fit check.
+
+<p align="center">
+  <a href="hardware/case-waveshare-2.8/README.md">
+    <img src="hardware/case-waveshare-2.8/case_preview.png" width="760" alt="RaspyJack enclosure for the Waveshare 2.8 inch display"/>
+  </a>
+</p>
+
+STL files, dimensions, printing notes, and the editable model are available in
+[`hardware/case-waveshare-2.8`](hardware/case-waveshare-2.8/README.md).
+
 Use `ILI9341_320` for the original board revision. Use `ST7789_320` for a
 board marked Rev2.0 or Rev2.1; Waveshare changed the LCD controller while
 keeping the same GPIO pinout and XPT2046 touch controller.
