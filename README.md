@@ -6,6 +6,7 @@
 </p>
 
 <div align="center">
+  <img src="github-img/root-edc-logo.png" width="720" alt="Root EDC logo"/>
   <h1>RaspyJack</h1>
   <img src="github-img/logo.jpg" width="240" alt="RaspyJack logo"/>
   <p><strong>Portable Raspberry Pi offensive toolkit</strong> with LCD control, payload launcher, WebUI, and Payload IDE.</p>
