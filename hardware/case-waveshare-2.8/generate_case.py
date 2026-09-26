@@ -196,18 +196,36 @@ def make_bezel():
 
 
 def make_fit_gauge():
-    """Small clearance gauge for testing the cap fit before a full print."""
+    """Two loose parts: a male rail and a female U-channel.
+
+    After printing, remove both parts from the bed and slide the rail into the
+    channel from either end.  Their clearance is identical to the cap gap.
+    """
     c = CONFIG
-    _, _, outer_x, _ = dimensions()
     gap = c["cap_gap"]
-    # 28 mm long slice containing both the base wall and the cap skirt.
-    base_wall = box((28.0, c["wall"], 8.0), (0, 0, 4.0))
-    cap_outer = box((28.0, c["wall"] + gap + 2 * c["cap_wall"], 5.0),
-                    (0, 7.0, 2.5))
-    cap_void = box((28.2, c["wall"] + gap, 5.2), (0, 7.0, 2.6))
-    cap = difference(cap_outer, [cap_void])
-    # Keep the two test pieces separate in a single STL.
-    return trimesh.util.concatenate([base_wall, cap])
+    length = 25.0
+    rail_w = 10.0
+    rail_h = 5.0
+    channel_wall = c["cap_wall"]
+
+    # Male part representing the outside of the base.
+    rail = box((length, rail_w, rail_h), (-17.0, 0, rail_h / 2))
+
+    # Female cap section.  The cavity is open at the top and at both ends, so
+    # it forms an obvious U-shaped channel in the slicer and after printing.
+    cavity_w = rail_w + gap
+    cavity_h = rail_h + gap
+    outer_w = cavity_w + 2 * channel_wall
+    outer_h = cavity_h + channel_wall
+    channel_outer = box((length, outer_w, outer_h),
+                        (17.0, 0, outer_h / 2))
+    channel_void = box((length + 1.0, cavity_w, cavity_h + 1.0),
+                       (17.0, 0, channel_wall + (cavity_h + 1.0) / 2))
+    channel = difference(channel_outer, [channel_void])
+
+    # Both disconnected solids intentionally share one STL for a single small
+    # print job.  They are 9 mm apart and do not touch each other.
+    return trimesh.util.concatenate([rail, channel])
 
 
 def validate(name, mesh):

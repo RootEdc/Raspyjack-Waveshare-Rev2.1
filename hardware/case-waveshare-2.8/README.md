@@ -15,9 +15,11 @@ Parametryczna, dwuczęściowa obudowa dla stosu, od dołu:
 
 ## Pierwszy wydruk
 
-Najpierw wydrukuj `cap_clearance_test.stl`. Domyślny luz pokrywy wynosi 0,30 mm.
-Jeżeli połączenie jest zbyt ciasne lub luźne, zmień `cap_gap` w `generate_case.py`
-i ponownie wygeneruj STL.
+Najpierw wydrukuj `cap_clearance_test.stl`. Na stole powstaną dwa osobne
+elementy: prostokątny trzpień oraz kanał w kształcie litery U. Zdejmij oba
+elementy ze stołu i wsuń trzpień w kanał od jego krótszego końca. Domyślny luz
+pokrywy wynosi 0,30 mm. Jeżeli połączenie jest zbyt ciasne lub luźne, zmień
+`cap_gap` w `generate_case.py` i ponownie wygeneruj STL.
 
 Ustawienia startowe:
 
