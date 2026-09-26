@@ -28,7 +28,10 @@ CONFIG = {
     "wall": 2.4,
     "floor": 2.4,
     "corner_radius": 4.0,
-    "base_height": 29.5,
+    # The photographed stack uses about 13 mm between Pi and HUB and about
+    # 19 mm between HUB and LCD.  With the Pi on the 4.2 mm bosses this puts
+    # the LCD face at about 42 mm above the outside bottom of the enclosure.
+    "base_height": 39.5,
     "post_height": 4.2,
     "post_outer_d": 6.2,
     "m25_clearance_d": 2.8,
@@ -137,18 +140,20 @@ def make_base():
 
     cutters = [cavity]
 
-    # HUB 12694 north edge: USB-UART, USB2 and USB3.  Separate apertures avoid
-    # a 63 mm unsupported bridge above one oversized opening.
-    hub_north_ports = ((-13.0, 10.5), (3.0, 15.5), (19.5, 15.5))
+    # HUB 12694 long edge.  USB2 and USB3 sit too far behind the LCD edge for
+    # a plug to reach through a useful wall aperture, as confirmed by the
+    # user's side photographs.  Only the smaller USB-to-UART service socket
+    # remains accessible on this wall.
+    hub_north_ports = ((-13.0, 10.5),)
     for x, width in hub_north_ports:
         cutters.append(box((width, c["wall"] * 3, 12.0),
-                           (x, -outer_y / 2, 17.8)))
+                           (x, -outer_y / 2, 24.0)))
 
-    # USB1 and USB4 on the short edges.
+    # USB4 is the only host port whose socket reaches the LCD-side outline.
+    # USB1 on the opposite short edge is recessed by about 20 mm and its wall
+    # aperture would not provide practical access.
     cutters.append(box((c["wall"] * 3, 17.0, 12.0),
-                       (-outer_x / 2, c["stack_offset_y"], 17.8)))
-    cutters.append(box((c["wall"] * 3, 17.0, 12.0),
-                       (outer_x / 2, c["stack_offset_y"], 17.8)))
+                       (outer_x / 2, c["stack_offset_y"], 24.0)))
 
     # Pi Zero mini-HDMI, USB data and power.  Centres come from the official
     # Zero 2 W mechanical drawing (12.4, 41.4 and 54 mm from the board edge).

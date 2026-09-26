@@ -37,17 +37,22 @@ Montaż wykorzystuje otwory M2.5 w rozstawie 58×23 mm. Otwory modelu mają
 
 - LCD PCB: 85,01×56,44 mm,
 - Raspberry Pi Zero 2 W i hub: 65×30 mm,
-- zewnętrzny korpus: około 91,1×62,5×29,5 mm,
-- pełna wysokość po założeniu ramki: około 32,1 mm.
+- zewnętrzny korpus: około 91,1×62,5×39,5 mm,
+- pełna wysokość po założeniu ramki: około 42,1 mm.
 
-Model ma szerokie okna dla USB1/USB4 na krótkich bokach oraz USB2/USB3 i
-USB-UART na długim boku. Osobne wycięcia zapewniają dojście do złączy Pi i
-karty microSD.
+Model udostępnia jeden port hosta USB-A: USB4 na krótkim boku, gdzie krawędź
+huba dochodzi do obrysu LCD. USB1 po przeciwnej stronie jest cofnięty o około
+20 mm, a USB2/USB3 są głęboko pod większą płytką LCD, dlatego ich niepraktyczne
+otwory usunięto. Pozostają mniejsze okno serwisowe USB-UART oraz osobne
+wycięcia dla złączy Pi i karty microSD.
 
 Położenie otworu dotyku i czterech przycisków zmierzono z wyprostowanego
 perspektywicznie zdjęcia egzemplarza Rev2.1. Otwór 67,4×48,7 mm jest przesunięty
 o 1,105 mm w lewo i 2,770 mm ku górnej krawędzi względem środka PCB. Szczegóły
 pomiaru znajdują się w `PHOTO_MEASUREMENTS.md`.
+
+Wysokość i położenie złączy sprawdzono na dodatkowych zdjęciach boków zestawu
+z monetą 1 euro. Wyniki i założenia opisuje `SIDE_PHOTO_CHECK.md`.
 
 ## Edycja i generowanie
 
