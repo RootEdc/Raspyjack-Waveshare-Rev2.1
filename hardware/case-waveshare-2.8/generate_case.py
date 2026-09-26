@@ -36,17 +36,18 @@ CONFIG = {
     "stack_offset_x": 10.005,
     "stack_offset_y": -13.22,
     # Cap / bezel.
-    "cap_gap": 0.30,
+    # Radial clearance: the gap on EACH side of the base, not a total gap.
+    "cap_clearance": 0.25,
     "cap_wall": 1.6,
     "cap_skirt": 5.0,
     "cap_top": 2.6,
     # LCD visible area and KEY1..KEY4 access.
-    "screen_x": 60.5,
-    "screen_y": 45.8,
+    "screen_x": 62.5,
+    "screen_y": 47.0,
     "screen_offset_x": -5.7,
     "button_x": 33.7,
-    "button_y": (-18.0, -6.0, 6.0, 18.0),
-    "button_d": 6.4,
+    "button_slot_x": 8.0,
+    "button_slot_y": 46.0,
 }
 
 HERE = Path(__file__).resolve().parent
@@ -130,20 +131,30 @@ def make_base():
 
     cutters = [cavity]
 
-    # HUB 12694: USB2, USB3 and USB-UART on the north long edge.
-    cutters.append(box((63.0, c["wall"] * 3, 14.0),
-                       (c["stack_offset_x"] - 1.0, outer_y / 2, 17.8)))
-    # USB1 and USB4 on the short edges.  Long windows also ease insertion of
-    # Wi-Fi adapters beneath the overhanging LCD board.
-    cutters.append(box((c["wall"] * 3, 34.0, 14.0),
+    # HUB 12694 north edge: USB-UART, USB2 and USB3.  Separate apertures avoid
+    # a 63 mm unsupported bridge above one oversized opening.
+    hub_north_ports = ((-13.0, 10.5), (3.0, 15.5), (19.5, 15.5))
+    for x, width in hub_north_ports:
+        cutters.append(box((width, c["wall"] * 3, 12.0),
+                           (x, outer_y / 2, 17.8)))
+
+    # USB1 and USB4 on the short edges.
+    cutters.append(box((c["wall"] * 3, 17.0, 12.0),
                        (-outer_x / 2, c["stack_offset_y"], 17.8)))
-    cutters.append(box((c["wall"] * 3, 34.0, 14.0),
+    cutters.append(box((c["wall"] * 3, 17.0, 12.0),
                        (outer_x / 2, c["stack_offset_y"], 17.8)))
 
-    # Pi Zero power/USB/mini-HDMI edge.  One generous opening keeps cable
-    # plugs usable and tolerates connector variation between Zero revisions.
-    cutters.append(box((67.0, c["wall"] * 3, 8.5),
-                       (c["stack_offset_x"], -outer_y / 2, 7.8)))
+    # Pi Zero mini-HDMI, USB data and power.  Centres come from the official
+    # Zero 2 W mechanical drawing (12.4, 41.4 and 54 mm from the board edge).
+    stack_left = c["stack_offset_x"] - c["pi_x"] / 2
+    pi_south_ports = (
+        (stack_left + 12.4, 14.0),
+        (stack_left + 41.4, 10.5),
+        (stack_left + 54.0, 10.5),
+    )
+    for x, width in pi_south_ports:
+        cutters.append(box((width, c["wall"] * 3, 8.5),
+                           (x, -outer_y / 2, 7.8)))
 
     # microSD finger slot at the end of the Pi board.
     cutters.append(box((c["wall"] * 3, 17.0, 6.5),
@@ -174,8 +185,8 @@ def make_base():
 def make_bezel():
     c = CONFIG
     _, _, outer_x, outer_y = dimensions()
-    cap_inner_x = outer_x + c["cap_gap"]
-    cap_inner_y = outer_y + c["cap_gap"]
+    cap_inner_x = outer_x + 2 * c["cap_clearance"]
+    cap_inner_y = outer_y + 2 * c["cap_clearance"]
     cap_outer_x = cap_inner_x + 2 * c["cap_wall"]
     cap_outer_y = cap_inner_y + 2 * c["cap_wall"]
     total_h = c["cap_skirt"] + c["cap_top"]
@@ -183,16 +194,21 @@ def make_bezel():
     cap = rounded_box(cap_outer_x, cap_outer_y, total_h,
                       c["corner_radius"] + c["cap_wall"])
     underside = rounded_box(cap_inner_x, cap_inner_y, c["cap_skirt"] + 0.2,
-                            c["corner_radius"] + c["cap_gap"] / 2, -0.1)
+                            c["corner_radius"] + c["cap_clearance"], -0.1)
 
     screen = box((c["screen_x"], c["screen_y"], total_h + 2),
                  (c["screen_offset_x"], 0, total_h / 2))
-    keys = [
-        cylinder(c["button_d"] / 2, total_h + 2,
-                 (c["button_x"], y, total_h / 2))
-        for y in c["button_y"]
-    ]
-    return difference(cap, [underside, screen, *keys])
+    # One rounded slot is tolerant of minor Rev2.1 button-position changes and
+    # gives a finger direct access to all four switches.
+    slot_x = c["button_slot_x"]
+    slot_y = c["button_slot_y"]
+    slot_parts = [box((slot_x, slot_y - slot_x, total_h + 2),
+                      (c["button_x"], 0, total_h / 2))]
+    for y in (-(slot_y - slot_x) / 2, (slot_y - slot_x) / 2):
+        slot_parts.append(cylinder(slot_x / 2, total_h + 2,
+                                   (c["button_x"], y, total_h / 2)))
+    button_slot = union(slot_parts)
+    return difference(cap, [underside, screen, button_slot])
 
 
 def make_fit_gauge():
@@ -202,7 +218,7 @@ def make_fit_gauge():
     channel from either end.  Their clearance is identical to the cap gap.
     """
     c = CONFIG
-    gap = c["cap_gap"]
+    clearance = c["cap_clearance"]
     length = 25.0
     rail_w = 10.0
     rail_h = 5.0
@@ -213,8 +229,8 @@ def make_fit_gauge():
 
     # Female cap section.  The cavity is open at the top and at both ends, so
     # it forms an obvious U-shaped channel in the slicer and after printing.
-    cavity_w = rail_w + gap
-    cavity_h = rail_h + gap
+    cavity_w = rail_w + 2 * clearance
+    cavity_h = rail_h + clearance
     outer_w = cavity_w + 2 * channel_wall
     outer_h = cavity_h + channel_wall
     channel_outer = box((length, outer_w, outer_h),
@@ -239,9 +255,17 @@ def validate(name, mesh):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    bezel_assembly = make_bezel()
+    bezel_print = bezel_assembly.copy()
+    # Export the bezel face-down.  This puts its broad, flat front surface on
+    # the print bed and avoids bridging the whole face over the 5 mm skirt.
+    bezel_print.apply_transform(
+        trimesh.transformations.rotation_matrix(np.pi, (1, 0, 0))
+    )
+    bezel_print.apply_translation((0, 0, CONFIG["cap_skirt"] + CONFIG["cap_top"]))
     parts = {
         "raspyjack_28_base.stl": make_base(),
-        "raspyjack_28_bezel.stl": make_bezel(),
+        "raspyjack_28_bezel.stl": bezel_print,
         "cap_clearance_test.stl": make_fit_gauge(),
     }
     for filename, mesh in parts.items():
@@ -250,7 +274,7 @@ def main():
 
     # A lightweight preview file: bezel is lifted to its assembled position.
     base = parts["raspyjack_28_base.stl"].copy()
-    bezel = move(parts["raspyjack_28_bezel.stl"], (0, 0, CONFIG["base_height"] - CONFIG["cap_skirt"]))
+    bezel = move(bezel_assembly, (0, 0, CONFIG["base_height"] - CONFIG["cap_skirt"]))
     preview = trimesh.util.concatenate([base, bezel])
     preview.export(OUT / "assembly_preview.stl")
     print(f"Wrote files to {OUT}")

@@ -18,8 +18,8 @@ Parametryczna, dwuczęściowa obudowa dla stosu, od dołu:
 Najpierw wydrukuj `cap_clearance_test.stl`. Na stole powstaną dwa osobne
 elementy: prostokątny trzpień oraz kanał w kształcie litery U. Zdejmij oba
 elementy ze stołu i wsuń trzpień w kanał od jego krótszego końca. Domyślny luz
-pokrywy wynosi 0,30 mm. Jeżeli połączenie jest zbyt ciasne lub luźne, zmień
-`cap_gap` w `generate_case.py` i ponownie wygeneruj STL.
+pokrywy wynosi 0,25 mm na każdą stronę. Jeżeli połączenie jest zbyt ciasne lub
+luźne, zmień `cap_clearance` w `generate_case.py` i ponownie wygeneruj STL.
 
 Ustawienia startowe:
 
@@ -27,8 +27,8 @@ Ustawienia startowe:
 - warstwa: 0,20 mm,
 - 4 obrysy,
 - 20–30% wypełnienia,
-- podpory: wyłącznie pod mostami otworów portów, jeśli slicer ich wymaga,
-- druk podstawy dnem na stole, ramki płaską stroną na stole.
+- podpory: zwykle nie są potrzebne; sprawdź podgląd warstw przy otworach USB,
+- podstawa jest już ustawiona dnem na stole, a ramka płaskim frontem na stole.
 
 Montaż wykorzystuje otwory M2.5 w rozstawie 58×23 mm. Otwory modelu mają
 2,8 mm, a słupki 6,2 mm średnicy.
@@ -56,7 +56,7 @@ python3 -m venv .venv-case
 ```
 
 Wszystkie wartości są w milimetrach. Po pierwszym fizycznym przymierzeniu
-najczęściej wystarczy zmienić `pcb_clearance`, `cap_gap` lub wysokość
+najczęściej wystarczy zmienić `pcb_clearance`, `cap_clearance` lub wysokość
 `base_height` w sekcji `CONFIG`.
 
 ## Źródła wymiarów

@@ -23,25 +23,30 @@ module base() {
     rounded_box([outer.x, outer.y, base_h], corner_r);
     translate([0,0,floor_t])
       rounded_box([inner.x, inner.y, base_h], max(1,corner_r-wall));
-    // USB2/3 + UART, USB1, USB4, Pi connector edge, microSD.
-    translate([9, outer.y/2, 17.8]) cube([63, 3*wall, 14], center=true);
-    translate([-outer.x/2, -13.22, 17.8]) cube([3*wall,34,14], center=true);
-    translate([ outer.x/2, -13.22, 17.8]) cube([3*wall,34,14], center=true);
-    translate([10.005,-outer.y/2,7.8]) cube([67,3*wall,8.5], center=true);
+    // USB-UART, USB2 and USB3 on the HUB's long edge.
+    for(p=[[-13,10.5],[3,15.5],[19.5,15.5]])
+      translate([p.x,outer.y/2,17.8]) cube([p.y,3*wall,12],center=true);
+    // USB1 and USB4 on the short edges.
+    translate([-outer.x/2,-13.22,17.8]) cube([3*wall,17,12],center=true);
+    translate([ outer.x/2,-13.22,17.8]) cube([3*wall,17,12],center=true);
+    // Pi Zero mini-HDMI, USB data and USB power.
+    for(p=[[-10.095,14],[18.905,10.5],[31.505,10.5]])
+      translate([p.x,-outer.y/2,7.8]) cube([p.y,3*wall,8.5],center=true);
+    // microSD.
     translate([outer.x/2,-13.22,6]) cube([3*wall,17,6.5], center=true);
   }
 }
 
 module bezel() {
-  gap=0.30; skirt=5; top=2.6; capwall=1.6;
-  ci=[outer.x+gap, outer.y+gap];
+  side_clearance=0.25; skirt=5; top=2.6; capwall=1.6;
+  ci=[outer.x+2*side_clearance, outer.y+2*side_clearance];
   co=[ci.x+2*capwall, ci.y+2*capwall];
   difference() {
     rounded_box([co.x,co.y,skirt+top], corner_r+capwall);
-    translate([0,0,-.1]) rounded_box([ci.x,ci.y,skirt+.2],corner_r+gap/2);
-    translate([-5.7,0,-1]) cube([60.5,45.8,skirt+top+2],center=true);
-    for(y=[-18,-6,6,18]) translate([33.7,y,-1])
-      cylinder(d=6.4,h=skirt+top+2,$fn=48);
+    translate([0,0,-.1]) rounded_box([ci.x,ci.y,skirt+.2],corner_r+side_clearance);
+    translate([-5.7,0,-1]) cube([62.5,47,skirt+top+2],center=true);
+    hull() for(y=[-19,19]) translate([33.7,y,-1])
+      cylinder(d=8,h=skirt+top+2,$fn=48);
   }
 }
 

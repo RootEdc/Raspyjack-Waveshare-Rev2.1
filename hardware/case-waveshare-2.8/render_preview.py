@@ -48,6 +48,10 @@ def triangles(mesh, color, transform, z_offset=0):
 def main():
     base = trimesh.load_mesh(STL / "raspyjack_28_base.stl")
     bezel = trimesh.load_mesh(STL / "raspyjack_28_bezel.stl")
+    # The printable bezel STL is face-down.  Restore assembly orientation for
+    # the preview and then place it over the base.
+    bezel.apply_transform(trimesh.transformations.rotation_matrix(np.pi, (1, 0, 0)))
+    bezel.apply_translation((0, 0, 7.6))
     transform = rotation_x(np.deg2rad(-61)) @ rotation_z(np.deg2rad(-38))
 
     faces = triangles(base, (55, 62, 68), transform)
