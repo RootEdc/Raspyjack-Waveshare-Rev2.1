@@ -12,7 +12,7 @@ LCD 85,01×56,44 mm i rozstawem otworów 58×23 mm.
 | --- | --- |
 | `215857626` | Położenie szkła dotykowego, widocznego LCD i czterech przycisków względem PCB. |
 | `220637802` | Gniazda na długiej krawędzi są cofnięte pod LCD. |
-| `220701400` | Pi i hub są dosunięte do dwóch krawędzi LCD; microSD wypada na dostępnym krótkim boku. |
+| `220701400` | Widok od tyłu: po odbiciu lustrzanym Pi i hub wypadają przy lewej i górnej krawędzi widoku frontowego; microSD jest po stronie przycisków. |
 | `220714509` | Przekrój całego stosu oraz wysokości Pi→hub i hub→LCD. |
 | `222006457` | Złącza GPIO i dystanse mieszczą się w obrysie płytek; kontrola wysokości z drugiej strony. |
 | `222017834` | Żaden element nie wychodzi poza prostokątny obrys PCB. |
@@ -20,8 +20,15 @@ LCD 85,01×56,44 mm i rozstawem otworów 58×23 mm.
 
 ## Wymiary wynikowe
 
-- Pi i hub 65×30 mm są dosunięte do dwóch krawędzi LCD. Daje to przesunięcie
-  środka `10,005 mm` w osi X i `13,22 mm` w osi Y.
+- Układ współrzędnych modelu jest zgodny z frontem LCD: przyciski są po lewej,
+  a góra zdjęcia jest górą modelu. Zdjęcia Pi i huba wykonano od tyłu, dlatego
+  przed porównaniem z frontem wymagają odbicia lustrzanego.
+- Po prawidłowym odbiciu Pi i hub 65×30 mm są dosunięte do lewej i górnej
+  krawędzi LCD. Daje to przesunięcie środka `−10,005 mm` w osi X i
+  `−13,22 mm` w osi Y.
+- Przeciwległy krótki bok Pi/huba jest cofnięty względem LCD o 20,01 mm,
+  a przeciwległa długa krawędź o 26,44 mm. Wyjaśnia to, dlaczego tylko port
+  przy lewej krawędzi może dochodzić do ściany obudowy.
 - Wewnętrzny obrys obudowy ma 86,31×57,74 mm, czyli po 0,65 mm luzu od każdej
   krawędzi PCB LCD.
 - Korpus ma 91,11×62,54×40,00 mm. Ramka zwiększa wymiar zewnętrzny do
@@ -31,23 +38,23 @@ LCD 85,01×56,44 mm i rozstawem otworów 58×23 mm.
   względem odczytanego stosu.
 - Widoczny ekran ma otwór 67,40×48,70 mm przesunięty o 1,105 mm w lewo i
   2,770 mm w stronę bliższej krawędzi PCB.
-- Środek jedynego dostępnego portu USB4 wypada 24 mm nad spodem. Otwór ma
-  17×12 mm.
-- Otwór microSD pozostaje na tym samym krótkim boku, ze środkiem 6 mm nad
-  spodem i wymiarem 17×6,5 mm.
+- Środek jedynego dostępnego portu USB-A wypada 24 mm nad spodem na lewym
+  krótkim boku, czyli po stronie czterech przycisków. Otwór ma 17×12 mm.
+- Otwór microSD pozostaje na tym samym lewym krótkim boku, ze środkiem 6 mm
+  nad spodem i wymiarem 17×6,5 mm.
 - Luz ramki 0,25 mm na stronę został potwierdzony fizycznym wydrukiem próbki.
 
 ## Porty
 
 Na zewnątrz pozostają tylko:
 
-1. jeden boczny port hosta USB-A (USB4),
+1. jeden boczny port hosta USB-A po stronie przycisków,
 2. karta microSD.
 
-USB1, USB2, USB3, USB-UART, mini-HDMI, USB danych i USB zasilania Raspberry Pi
-są cofnięte pod LCD. Ich ściany są pełne. Panelowe gniazdo microUSB zasilania
-zostanie dodane dopiero po sprawdzeniu dopasowania pierwszego wydruku i
-poznaniu wymiarów wybranego elementu panelowego.
+Pozostałe trzy USB-A, USB-UART, mini-HDMI, USB danych i USB zasilania
+Raspberry Pi są cofnięte pod LCD. Ich ściany są pełne. Panelowe gniazdo
+microUSB zasilania zostanie dodane dopiero po sprawdzeniu dopasowania
+pierwszego wydruku i poznaniu wymiarów wybranego elementu panelowego.
 
 Moneta jest trzymana w nieco innej płaszczyźnie niż zestaw, dlatego nie służy
 jako jedyne źródło skali. Wymiar X/Y opiera się na dokumentacji płytek, a

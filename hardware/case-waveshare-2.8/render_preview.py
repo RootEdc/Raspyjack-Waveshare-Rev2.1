@@ -52,7 +52,9 @@ def main():
     # the preview and then place it over the base.
     bezel.apply_transform(trimesh.transformations.rotation_matrix(np.pi, (1, 0, 0)))
     bezel.apply_translation((0, 0, 7.6))
-    transform = rotation_x(np.deg2rad(-61)) @ rotation_z(np.deg2rad(-38))
+    # View from the key side so the only USB-A and microSD openings are
+    # visible together with the four key apertures in the bezel.
+    transform = rotation_x(np.deg2rad(-61)) @ rotation_z(np.deg2rad(38))
 
     faces = triangles(base, (55, 62, 68), transform)
     # Bezel skirt overlaps the top 5 mm of the 40.0 mm base.
@@ -77,7 +79,7 @@ def main():
 
     draw.text((40, 35), "RaspyJack 2.8 — Pi Zero 2 W + Waveshare 12694",
               fill=(24, 29, 35), stroke_width=0)
-    draw.text((40, 62), "Podglad zlozenia: podstawa + zdejmowana ramka",
+    draw.text((40, 62), "Strona przyciskow: jedyny USB-A + microSD",
               fill=(72, 79, 88), stroke_width=0)
     output = HERE / "case_preview.png"
     image.save(output)
