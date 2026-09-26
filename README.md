@@ -50,6 +50,14 @@ Check the WIKI for more ! https://github.com/7h30th3r0n3/Raspyjack/wiki
 
 ## 🧱 Hardware
 
+### 🖨️ Obudowa do druku 3D
+
+Gotowe pliki STL i edytowalny model dla zestawu **Raspberry Pi Zero 2 W →
+Waveshare 12694 USB HUB HAT → Waveshare 2.8" LCD Rev2.1** znajdują się w
+[`hardware/case-waveshare-2.8`](hardware/case-waveshare-2.8/README.md).
+
+![Podgląd obudowy 2.8](hardware/case-waveshare-2.8/case_preview.png)
+
 ## ✅ Required Hardware
 <table>
   <tr>
