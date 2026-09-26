@@ -44,6 +44,11 @@ Model ma szerokie okna dla USB1/USB4 na krótkich bokach oraz USB2/USB3 i
 USB-UART na długim boku. Osobne wycięcia zapewniają dojście do złączy Pi i
 karty microSD.
 
+Położenie otworu dotyku i czterech przycisków zmierzono z wyprostowanego
+perspektywicznie zdjęcia egzemplarza Rev2.1. Otwór 67,4×48,7 mm jest przesunięty
+o 1,105 mm w lewo i 2,770 mm ku górnej krawędzi względem środka PCB. Szczegóły
+pomiaru znajdują się w `PHOTO_MEASUREMENTS.md`.
+
 ## Edycja i generowanie
 
 `raspyjack_case.scad` jest czytelnym modelem referencyjnym OpenSCAD.

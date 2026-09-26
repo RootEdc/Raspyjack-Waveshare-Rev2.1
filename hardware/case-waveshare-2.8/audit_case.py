@@ -6,6 +6,8 @@ from pathlib import Path
 import numpy as np
 import trimesh
 
+from generate_case import CONFIG
+
 HERE = Path(__file__).resolve().parent
 STL = HERE / "stl"
 
@@ -71,11 +73,30 @@ def main():
     require(np.allclose(bezel_print.extents, expected["bezel"], atol=0.05),
             f"unexpected bezel size: {bezel_print.extents}")
 
+    # Photo-derived LCD opening: verify its intentionally unequal margins and
+    # preserve at least two 0.4 mm extrusion lines between keys and display.
+    c = CONFIG
+    left = c["lcd_x"] / 2 + c["screen_offset_x"] - c["screen_x"] / 2
+    right = c["lcd_x"] / 2 - (c["screen_offset_x"] + c["screen_x"] / 2)
+    top = c["lcd_y"] / 2 + c["screen_offset_y"] - c["screen_y"] / 2
+    bottom = c["lcd_y"] / 2 - (c["screen_offset_y"] + c["screen_y"] / 2)
+    require(np.allclose((left, right, top, bottom),
+                        (7.70, 9.91, 1.10, 6.64), atol=0.02),
+            f"LCD margins changed: {(left, right, top, bottom)}")
+    bridge = (c["screen_offset_x"] - c["screen_x"] / 2) - (
+        c["button_x"] + c["button_hole_x"] / 2
+    )
+    require(bridge >= 0.8, f"only {bridge:.2f} mm between keys and LCD opening")
+    require(c["stack_offset_y"] > 0,
+            "Pi/HUB stack must remain under the photographed GPIO edge")
+
     print("PASS: base is one watertight printable part")
     print("PASS: bezel is one watertight printable part and is face-down")
     print("PASS: clearance gauge contains two disconnected parts")
     print("PASS: assembled base and bezel have no solid collision")
     print("PASS: external dimensions match the parametric design")
+    print("PASS: photo-derived LCD margins and key bridge are preserved")
+    print("PASS: Pi/HUB stack is aligned with the photographed GPIO edge")
 
 
 if __name__ == "__main__":

@@ -34,7 +34,7 @@ CONFIG = {
     "m25_clearance_d": 2.8,
     # The Zero-sized boards sit against the LCD's right and lower edges.
     "stack_offset_x": 10.005,
-    "stack_offset_y": -13.22,
+    "stack_offset_y": 13.22,
     # Cap / bezel.
     # Radial clearance: the gap on EACH side of the base, not a total gap.
     "cap_clearance": 0.25,
@@ -42,12 +42,18 @@ CONFIG = {
     "cap_skirt": 5.0,
     "cap_top": 2.6,
     # LCD visible area and KEY1..KEY4 access.
-    "screen_x": 62.5,
-    "screen_y": 47.0,
-    "screen_offset_x": -5.7,
-    "button_x": 33.7,
-    "button_slot_x": 8.0,
-    "button_slot_y": 46.0,
+    # Measured after perspective correction of the user's board photograph.
+    # In board coordinates the opening is x=7.70..75.10, y=1.10..49.80 mm.
+    "screen_x": 67.40,
+    "screen_y": 48.70,
+    "screen_offset_x": -1.105,
+    "screen_offset_y": -2.770,
+    # KEY1..KEY4 centres measured from the same rectified photograph.
+    "button_x": -38.355,
+    "button_y": (-20.57, -6.07, 8.28, 22.23),
+    "button_hole_x": 5.20,
+    "button_hole_y": 7.20,
+    "button_hole_radius": 1.20,
 }
 
 HERE = Path(__file__).resolve().parent
@@ -136,7 +142,7 @@ def make_base():
     hub_north_ports = ((-13.0, 10.5), (3.0, 15.5), (19.5, 15.5))
     for x, width in hub_north_ports:
         cutters.append(box((width, c["wall"] * 3, 12.0),
-                           (x, outer_y / 2, 17.8)))
+                           (x, -outer_y / 2, 17.8)))
 
     # USB1 and USB4 on the short edges.
     cutters.append(box((c["wall"] * 3, 17.0, 12.0),
@@ -163,7 +169,7 @@ def make_base():
     # Bottom ventilation slots, kept away from the mounting pattern.
     for x in (-24.0, -16.0, -8.0, 0.0, 8.0, 16.0):
         cutters.append(box((3.0, 18.0, c["floor"] + 2),
-                           (x - 7.0, 13.0, c["floor"] / 2)))
+                           (x - 7.0, -13.0, c["floor"] / 2)))
 
     body = difference(body, cutters)
 
@@ -197,18 +203,15 @@ def make_bezel():
                             c["corner_radius"] + c["cap_clearance"], -0.1)
 
     screen = box((c["screen_x"], c["screen_y"], total_h + 2),
-                 (c["screen_offset_x"], 0, total_h / 2))
-    # One rounded slot is tolerant of minor Rev2.1 button-position changes and
-    # gives a finger direct access to all four switches.
-    slot_x = c["button_slot_x"]
-    slot_y = c["button_slot_y"]
-    slot_parts = [box((slot_x, slot_y - slot_x, total_h + 2),
-                      (c["button_x"], 0, total_h / 2))]
-    for y in (-(slot_y - slot_x) / 2, (slot_y - slot_x) / 2):
-        slot_parts.append(cylinder(slot_x / 2, total_h + 2,
-                                   (c["button_x"], y, total_h / 2)))
-    button_slot = union(slot_parts)
-    return difference(cap, [underside, screen, button_slot])
+                 (c["screen_offset_x"], c["screen_offset_y"], total_h / 2))
+    # Four rounded rectangular apertures follow the actual, non-uniform key
+    # spacing visible in the Rev2.1 board photograph.
+    keys = []
+    for y in c["button_y"]:
+        key = rounded_box(c["button_hole_x"], c["button_hole_y"], total_h + 2,
+                          c["button_hole_radius"], z0=-1)
+        keys.append(move(key, (c["button_x"], y, 0)))
+    return difference(cap, [underside, screen, *keys])
 
 
 def make_fit_gauge():
