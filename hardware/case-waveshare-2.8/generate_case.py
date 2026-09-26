@@ -31,10 +31,14 @@ CONFIG = {
     # The photographed stack uses about 13 mm between Pi and HUB and about
     # 19 mm between HUB and LCD.  With the Pi on the 4.2 mm bosses this puts
     # the LCD face at about 42 mm above the outside bottom of the enclosure.
-    "base_height": 39.5,
+    # 40.0 mm leaves roughly 0.5 mm vertical fitting allowance under the cap.
+    "base_height": 40.0,
     "post_height": 4.2,
     "post_outer_d": 6.2,
-    "m25_clearance_d": 2.8,
+    # The photographed assembled stack has short M2.5 studs below the Pi.
+    # Blind sockets accept those studs without puncturing the case bottom.
+    "m25_socket_d": 3.2,
+    "stud_socket_depth": 4.0,
     # The Zero-sized boards sit against the LCD's right and lower edges.
     "stack_offset_x": 10.005,
     "stack_offset_y": 13.22,
@@ -140,34 +144,12 @@ def make_base():
 
     cutters = [cavity]
 
-    # HUB 12694 long edge.  USB2 and USB3 sit too far behind the LCD edge for
-    # a plug to reach through a useful wall aperture, as confirmed by the
-    # user's side photographs.  Only the smaller USB-to-UART service socket
-    # remains accessible on this wall.
-    hub_north_ports = ((-13.0, 10.5),)
-    for x, width in hub_north_ports:
-        cutters.append(box((width, c["wall"] * 3, 12.0),
-                           (x, -outer_y / 2, 24.0)))
-
     # USB4 is the only host port whose socket reaches the LCD-side outline.
-    # USB1 on the opposite short edge is recessed by about 20 mm and its wall
-    # aperture would not provide practical access.
+    # USB1, USB2, USB3 and USB-UART are recessed below the larger LCD board.
     cutters.append(box((c["wall"] * 3, 17.0, 12.0),
                        (outer_x / 2, c["stack_offset_y"], 24.0)))
 
-    # Pi Zero mini-HDMI, USB data and power.  Centres come from the official
-    # Zero 2 W mechanical drawing (12.4, 41.4 and 54 mm from the board edge).
-    stack_left = c["stack_offset_x"] - c["pi_x"] / 2
-    pi_south_ports = (
-        (stack_left + 12.4, 14.0),
-        (stack_left + 41.4, 10.5),
-        (stack_left + 54.0, 10.5),
-    )
-    for x, width in pi_south_ports:
-        cutters.append(box((width, c["wall"] * 3, 8.5),
-                           (x, -outer_y / 2, 7.8)))
-
-    # microSD finger slot at the end of the Pi board.
+    # microSD remains accessible at the aligned end of the Pi board.
     cutters.append(box((c["wall"] * 3, 17.0, 6.5),
                        (outer_x / 2, c["stack_offset_y"], 6.0)))
 
@@ -178,17 +160,18 @@ def make_base():
 
     body = difference(body, cutters)
 
-    # Four Pi/Hub mounting bosses.  Through holes accept M2.5 screws from the
-    # bottom and preserve the stock 58 x 23 mm mounting pattern.
+    # Four Pi/Hub mounting bosses preserve the stock 58 x 23 mm pattern.
+    # Their blind sockets receive the existing studs visible below the Pi;
+    # the complete 2.4 mm bottom skin remains intact below each socket.
     posts = []
     post_z = c["floor"] + c["post_height"] / 2
     for x, y in mounting_centres():
         boss = cylinder(c["post_outer_d"] / 2, c["post_height"], (x, y, post_z))
-        hole = cylinder(c["m25_clearance_d"] / 2,
-                        c["floor"] + c["post_height"] + 2,
-                        (x, y, (c["floor"] + c["post_height"]) / 2))
-        posts.append(difference(boss, [hole]))
-        body = difference(body, [hole])
+        socket_top = c["floor"] + c["post_height"] + 0.2
+        socket = cylinder(c["m25_socket_d"] / 2,
+                          c["stud_socket_depth"] + 0.2,
+                          (x, y, socket_top - (c["stud_socket_depth"] + 0.2) / 2))
+        posts.append(difference(boss, [socket]))
 
     return union([body, *posts])
 

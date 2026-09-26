@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import trimesh
 
-from generate_case import CONFIG, dimensions
+from generate_case import CONFIG, dimensions, mounting_centres
 
 HERE = Path(__file__).resolve().parent
 STL = HERE / "stl"
@@ -73,7 +73,7 @@ def main():
             f"base and bezel collide by {overlap_volume:.3f} mm^3")
 
     expected = {
-        "base": (91.11, 62.54, 39.50),
+        "base": (91.11, 62.54, 40.00),
         "bezel": (94.81, 66.24, 7.60),
     }
     require(np.allclose(base.extents, expected["base"], atol=0.05),
@@ -97,24 +97,26 @@ def main():
     require(bridge >= 0.8, f"only {bridge:.2f} mm between keys and LCD opening")
     require(c["stack_offset_y"] > 0,
             "Pi/HUB stack must remain under the photographed GPIO edge")
-    require(c["base_height"] >= 39.5,
+    require(c["base_height"] >= 40.0,
             "case is too short for the photographed Pi/HUB/LCD spacers")
 
-    # The photographed USB2/USB3 sockets are recessed too far below the LCD.
-    # Verify that their former apertures are solid wall, while the service
-    # UART opening and the one genuinely accessible side USB4 remain clear.
+    # Every connector on the long wall is recessed below the LCD. Verify the
+    # former HUB UART/USB2/USB3 and Pi HDMI/data/power locations are solid.
     _, _, outer_x, outer_y = dimensions()
     long_wall_probe = (2.0, c["wall"] - 0.4, 2.0)
-    for x in (3.0, 19.5):
+    for x in (-13.0, 3.0, 19.5):
         volume = probe_volume(
             base, long_wall_probe, (x, -outer_y / 2 + c["wall"] / 2, 24.0)
         )
-        require(volume > 5.0, f"front wall is unexpectedly open at x={x}")
-    uart_volume = probe_volume(
-        base, long_wall_probe,
-        (-13.0, -outer_y / 2 + c["wall"] / 2, 24.0),
-    )
-    require(uart_volume < 0.01, "USB-UART service opening is blocked")
+        require(volume > 5.0, f"upper long wall is unexpectedly open at x={x}")
+    for x in (-10.095, 18.905, 31.505):
+        volume = probe_volume(
+            base, long_wall_probe, (x, -outer_y / 2 + c["wall"] / 2, 7.8)
+        )
+        require(volume > 5.0, f"lower long wall is unexpectedly open at x={x}")
+
+    # Only USB4 and microSD are exposed on the aligned short edge. USB1 on
+    # the opposite edge remains behind a solid wall.
     short_wall_probe = (c["wall"] - 0.4, 2.0, 2.0)
     usb1_volume = probe_volume(
         base, short_wall_probe,
@@ -126,6 +128,19 @@ def main():
         (outer_x / 2 - c["wall"] / 2, c["stack_offset_y"], 24.0),
     )
     require(usb4_volume < 0.01, "accessible USB4 opening is blocked")
+    microsd_volume = probe_volume(
+        base, short_wall_probe,
+        (outer_x / 2 - c["wall"] / 2, c["stack_offset_y"], 6.0),
+    )
+    require(microsd_volume < 0.01, "microSD opening is blocked")
+
+    # Blind stud sockets stay open from above and leave a closed bottom skin.
+    for x, y in mounting_centres():
+        upper = probe_volume(base, (1.0, 1.0, 1.0),
+                             (x, y, c["floor"] + c["post_height"] - 0.5))
+        lower = probe_volume(base, (1.0, 1.0, 0.4), (x, y, 0.4))
+        require(upper < 0.01, "blind mounting socket is blocked")
+        require(lower > 0.2, "mounting socket punctures the bottom")
 
     print("PASS: base is one watertight printable part")
     print("PASS: bezel is one watertight printable part and is face-down")
@@ -135,7 +150,8 @@ def main():
     print("PASS: photo-derived LCD margins and key bridge are preserved")
     print("PASS: Pi/HUB stack is aligned with the photographed GPIO edge")
     print("PASS: enclosure height clears the photographed board stack")
-    print("PASS: only accessible USB4 is exposed; USB1/USB2/USB3 are closed")
+    print("PASS: only USB4 and microSD are exposed; all other port walls are closed")
+    print("PASS: mounting sockets are open above and preserve a closed bottom")
 
 
 if __name__ == "__main__":

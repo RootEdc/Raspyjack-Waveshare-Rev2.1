@@ -20,6 +20,7 @@ elementy: prostokątny trzpień oraz kanał w kształcie litery U. Zdejmij oba
 elementy ze stołu i wsuń trzpień w kanał od jego krótszego końca. Domyślny luz
 pokrywy wynosi 0,25 mm na każdą stronę. Jeżeli połączenie jest zbyt ciasne lub
 luźne, zmień `cap_clearance` w `generate_case.py` i ponownie wygeneruj STL.
+Luz 0,25 mm został już potwierdzony na fizycznym wydruku użytkownika.
 
 Ustawienia startowe:
 
@@ -30,21 +31,24 @@ Ustawienia startowe:
 - podpory: zwykle nie są potrzebne; sprawdź podgląd warstw przy otworach USB,
 - podstawa jest już ustawiona dnem na stole, a ramka płaskim frontem na stole.
 
-Montaż wykorzystuje otwory M2.5 w rozstawie 58×23 mm. Otwory modelu mają
-2,8 mm, a słupki 6,2 mm średnicy.
+Montaż wykorzystuje rozstaw 58×23 mm. Cztery słupki o średnicy 6,2 mm mają
+ślepe gniazda 3,2×4,0 mm dla krótkich trzpieni M2.5 istniejącego zestawu.
+Gniazda nie przechodzą przez dno obudowy.
 
 ## Wymiary projektowe
 
 - LCD PCB: 85,01×56,44 mm,
 - Raspberry Pi Zero 2 W i hub: 65×30 mm,
-- zewnętrzny korpus: około 91,1×62,5×39,5 mm,
-- pełna wysokość po założeniu ramki: około 42,1 mm.
+- zewnętrzny korpus: około 91,1×62,5×40,0 mm,
+- pełna wysokość po założeniu ramki: około 42,6 mm.
 
-Model udostępnia jeden port hosta USB-A: USB4 na krótkim boku, gdzie krawędź
-huba dochodzi do obrysu LCD. USB1 po przeciwnej stronie jest cofnięty o około
-20 mm, a USB2/USB3 są głęboko pod większą płytką LCD, dlatego ich niepraktyczne
-otwory usunięto. Pozostają mniejsze okno serwisowe USB-UART oraz osobne
-wycięcia dla złączy Pi i karty microSD.
+Model udostępnia dokładnie jeden port hosta USB-A: USB4 na krótkim boku, gdzie
+krawędź huba dochodzi do obrysu LCD. Na tej samej stronie pozostaje osobny
+otwór microSD. USB1/USB2/USB3, USB-UART, mini-HDMI oraz oba microUSB Raspberry
+Pi są głęboko pod większą płytką LCD, dlatego wszystkie ich otwory usunięto.
+Pełna przednia ściana zostawia miejsce na późniejsze dodanie panelowego
+gniazda microUSB po sprawdzeniu pierwszego wydruku i wymiarów konkretnego
+gniazda.
 
 Położenie otworu dotyku i czterech przycisków zmierzono z wyprostowanego
 perspektywicznie zdjęcia egzemplarza Rev2.1. Otwór 67,4×48,7 mm jest przesunięty

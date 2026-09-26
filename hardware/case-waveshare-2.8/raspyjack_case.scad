@@ -8,7 +8,7 @@ lcd = [85.01, 56.44];
 clearance = 0.65;
 wall = 2.4;
 floor_t = 2.4;
-base_h = 39.5;
+base_h = 40;
 corner_r = 4.0;
 inner = [lcd.x + 2*clearance, lcd.y + 2*clearance];
 outer = [inner.x + 2*wall, inner.y + 2*wall];
@@ -18,21 +18,31 @@ module rounded_box(s, r) {
     translate([x*(s.x/2-r), y*(s.y/2-r), 0]) cylinder(r=r, h=s.z, $fn=64);
 }
 
-module base() {
+module shell() {
   difference() {
     rounded_box([outer.x, outer.y, base_h], corner_r);
     translate([0,0,floor_t])
       rounded_box([inner.x, inner.y, base_h], max(1,corner_r-wall));
-    // USB2/USB3 are too deep below the LCD to be useful at the case wall.
-    // Keep only the smaller USB-to-UART service opening on this edge.
-    translate([-13,-outer.y/2,24]) cube([10.5,3*wall,12],center=true);
-    // Only USB4 reaches the case side; USB1 is recessed by about 20 mm.
+    // Only USB4 reaches the case side. USB1/2/3 and UART stay enclosed.
     translate([ outer.x/2,13.22,24]) cube([3*wall,17,12],center=true);
-    // Pi Zero mini-HDMI, USB data and USB power.
-    for(p=[[-10.095,14],[18.905,10.5],[31.505,10.5]])
-      translate([p.x,-outer.y/2,7.8]) cube([p.y,3*wall,8.5],center=true);
-    // microSD.
+    // microSD remains accessible.
     translate([outer.x/2,13.22,6]) cube([3*wall,17,6.5], center=true);
+  }
+}
+
+module mounting_post(x,y) {
+  difference() {
+    translate([x,y,floor_t]) cylinder(d=6.2,h=4.2,$fn=48);
+    // Blind 3.2 x 4.0 mm socket; the bottom skin stays intact.
+    translate([x,y,floor_t+4.2-4.0]) cylinder(d=3.2,h=4.2,$fn=36);
+  }
+}
+
+module base() {
+  union() {
+    shell();
+    for(x=[10.005-29,10.005+29], y=[13.22-11.5,13.22+11.5])
+      mounting_post(x,y);
   }
 }
 

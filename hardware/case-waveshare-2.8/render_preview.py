@@ -55,8 +55,8 @@ def main():
     transform = rotation_x(np.deg2rad(-61)) @ rotation_z(np.deg2rad(-38))
 
     faces = triangles(base, (55, 62, 68), transform)
-    # Bezel skirt overlaps the top 5 mm of the 39.5 mm base.
-    faces += triangles(bezel, (43, 154, 255), transform, z_offset=34.5)
+    # Bezel skirt overlaps the top 5 mm of the 40.0 mm base.
+    faces += triangles(bezel, (43, 154, 255), transform, z_offset=35.0)
     faces.sort(key=lambda item: item[0])
 
     points = np.concatenate([item[1] for item in faces])
