@@ -1,0 +1,34 @@
+RPi/
+__pycache__/
+*.py[cod]
+.DS_Store
+gui_conf.json
+payloads/sdr/data/aircraft.db
+
+# Device-local credentials and generated state
+.webui_token
+.webui_session_secret
+.webui_auth.json
+.wigle_credentials.json
+wifi/profiles/*.json
+!wifi/profiles/.gitkeep
+
+# Runtime output
+*.log
+*.pid
+*.pcap
+*.pcapng
+loot/**/*.json
+loot/**/*.log
+loot/**/*.pcap
+loot/**/*.pcapng
+
+# Captive portal output can contain IP addresses and submitted credentials
+DNSSpoof/captures/*
+!DNSSpoof/captures/.gitkeep
+DNSSpoof/sites/**/ip.txt
+DNSSpoof/sites/**/usernames.txt
+DNSSpoof/sites/**/saved.*
+
+# Offline map tiles (downloaded via scripts/download_tiles.sh)
+web/vendor/tiles/

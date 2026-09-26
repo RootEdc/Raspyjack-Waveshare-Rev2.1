@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RaspyJack Wardriving</title>
+  <link rel="stylesheet" href="./vendor/css/fontawesome.min.css">
+  <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
+  <style>
+    :root { color-scheme: dark; --bg: #05060a; --panel: #080c14; --border: #0f1a2a; --accent: #00ccff; --green: #00ff88; --red: #ff3333; --orange: #ff8800; --yellow: #ffaa00; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Segoe UI',system-ui,sans-serif; background:var(--bg); color:#ccc; overflow:hidden; }
+
+    /* Top bar */
+    #topbar { height:36px; background:#0a0e1a; display:flex; align-items:center; padding:0 12px; gap:10px; border-bottom:1px solid var(--border); }
+    #topbar h1 { font-size:14px; color:var(--accent); white-space:nowrap; }
+    #topbar select { background:#111830; color:#aaa; border:1px solid #1a2844; padding:2px 6px; border-radius:4px; font-size:11px; max-width:170px; }
+    #topbar button { background:#111830; color:#888; border:1px solid #1a2844; padding:2px 8px; border-radius:4px; font-size:11px; cursor:pointer; }
+    #topbar button:hover { color:#fff; background:#1a2850; }
+    #topbar button.active { border-color:var(--accent); color:var(--accent); }
+    #topbar .spacer { flex:1; }
+    #topbar a { color:#555; font-size:11px; text-decoration:none; }
+    #liveDot { display:none; color:var(--green); font-size:8px; animation:pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* Main layout */
+    #main { display:flex; height:calc(100vh - 36px); position:relative; }
+    #map { flex:1; background:#060a10; }
+
+    /* Side panel */
+    #panel { width:260px; background:var(--panel); border-left:1px solid var(--border); display:flex; flex-direction:column; transition:width 0.25s ease; overflow:hidden; }
+    #panel.collapsed { width:0; border:none; }
+    #toggleBtn { position:absolute; right:260px; top:50%; transform:translateY(-50%); z-index:1000; background:#111830; border:1px solid #1a2844; border-right:none; color:#666; width:20px; height:44px; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:6px 0 0 6px; font-size:10px; transition:right 0.25s ease; }
+    #toggleBtn:hover { color:#fff; background:#1a2850; }
+    #panel.collapsed ~ #toggleBtn { right:0; }
+
+    #panelHead { padding:6px 8px; font-size:11px; color:var(--accent); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; }
+    #panelHead span { color:#555; font-weight:400; }
+    #searchBox { margin:3px 5px; padding:3px 6px; background:#0a1020; border:1px solid var(--border); color:#ccc; border-radius:3px; font-size:10px; width:calc(100% - 10px); }
+    #filterBar { padding:3px 5px; display:flex; flex-wrap:wrap; gap:3px; border-bottom:1px solid var(--border); }
+    #filterBar select { background:#0a1020; color:#aaa; border:1px solid var(--border); padding:1px 4px; border-radius:3px; font-size:9px; }
+    #filterBar .fb { background:none; border:1px solid #1a2844; color:#666; padding:1px 5px; border-radius:3px; font-size:9px; cursor:pointer; }
+    #filterBar .fb:hover { color:#fff; border-color:#333; }
+    #filterBar .fb.on { border-color:var(--accent); color:var(--accent); }
+    #apList { flex:1; overflow-y:auto; font-family:'Courier New',monospace; font-size:10px; }
+    #apList::-webkit-scrollbar { width:3px; }
+    #apList::-webkit-scrollbar-thumb { background:#222; border-radius:2px; }
+
+    .ap { padding:3px 6px; border-bottom:1px solid #0a0e18; cursor:pointer; display:flex; align-items:center; gap:4px; }
+    .ap:hover { background:#0c1828; }
+    .ap .dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+    .ap .name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#bbb; }
+    .ap .badge { font-size:8px; padding:1px 3px; border-radius:2px; flex-shrink:0; }
+    .ap .sig { color:#555; font-size:9px; width:28px; text-align:right; flex-shrink:0; }
+
+    .b-open { background:#2a0000; color:var(--red); }
+    .b-wep { background:#2a1800; color:var(--orange); }
+    .b-wpa { background:#2a2200; color:var(--yellow); }
+    .b-wpa2 { background:#001a2a; color:var(--accent); }
+    .b-wpa3 { background:#002a1a; color:var(--green); }
+
+    /* Timeline bar */
+    #timeline { display:none; position:absolute; bottom:0; left:0; right:0; z-index:1001; height:44px; background:rgba(8,12,20,0.94); border-top:1px solid var(--border); padding:4px 12px; }
+    #timeline .tl-row { display:flex; align-items:center; gap:8px; height:100%; }
+    #timeline .tl-btn { background:none; border:1px solid #1a2844; color:#888; width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    #timeline .tl-btn:hover { color:#fff; border-color:var(--accent); }
+    #timeline .tl-btn.active { color:var(--accent); border-color:var(--accent); }
+    #tlSlider { flex:1; -webkit-appearance:none; appearance:none; height:4px; background:#1a2844; border-radius:2px; outline:none; cursor:pointer; }
+    #tlSlider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--accent); cursor:pointer; border:2px solid #0a0e1a; }
+    #tlTime { color:var(--accent); font-family:'Courier New',monospace; font-size:11px; white-space:nowrap; min-width:50px; text-align:center; }
+    #tlCount { color:#555; font-size:10px; white-space:nowrap; min-width:60px; }
+    #tlSpeed { background:#111830; color:#aaa; border:1px solid #1a2844; padding:1px 4px; border-radius:3px; font-size:10px; cursor:pointer; }
+
+    /* Legend */
+    #legend { position:absolute; bottom:20px; left:10px; z-index:1000; background:rgba(8,12,20,0.92); border:1px solid var(--border); border-radius:6px; padding:8px 10px; font-size:10px; }
+    #legend .row { display:flex; align-items:center; gap:6px; margin:2px 0; }
+    #legend .swatch { width:10px; height:10px; border-radius:50%; }
+    #legend .line { width:20px; height:2px; border-radius:1px; }
+    #legendToggle { position:absolute; bottom:20px; left:10px; z-index:999; background:#111830; border:1px solid #1a2844; color:#888; padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer; display:none; }
+
+    /* Stats overlay */
+    #statsOverlay { position:absolute; top:8px; left:10px; z-index:1000; background:rgba(8,12,20,0.88); border:1px solid var(--border); border-radius:6px; padding:5px 10px; font-size:10px; display:flex; gap:10px; }
+    #statsOverlay .s { color:#555; }
+    #statsOverlay .v { font-weight:600; }
+
+    .leaflet-popup-content-wrapper { background:rgba(10,16,30,0.95)!important; color:#ccc!important; border:1px solid #1a2844!important; border-radius:6px!important; }
+    .leaflet-popup-tip { background:rgba(10,16,30,0.95)!important; }
+
+    /* Subtle glow on markers only */
+    .leaflet-overlay-pane svg { filter: drop-shadow(0 0 2px rgba(0,204,255,0.25)); }
+
+    /* AP Detail slide-out */
+    #apDetail {
+      position:absolute; left:0; top:36px; bottom:0; width:280px; z-index:1001;
+      background:rgba(6,10,16,0.96); border-right:1px solid var(--accent);
+      transform:translateX(-100%); transition:transform 0.25s ease;
+      overflow-y:auto; font-family:'Courier New',monospace;
+    }
+    #apDetail.open { transform:translateX(0); }
+    #apDetailClose {
+      position:absolute; top:8px; right:8px; color:#666; cursor:pointer;
+      font-size:14px; z-index:1;
+    }
+    #apDetailClose:hover { color:#fff; }
+    #apDetailContent { padding:14px; }
+    .detail-header { font-size:16px; color:var(--accent); margin-bottom:10px; word-break:break-all; }
+    .detail-row { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #0a1020; font-size:11px; }
+    .detail-label { color:#555; }
+    .detail-val { color:#ccc; text-align:right; max-width:160px; word-break:break-all; }
+    .detail-sec { display:inline-block; padding:2px 8px; border-radius:4px; font-size:12px; font-weight:600; margin:6px 0; }
+    .detail-gps { margin-top:10px; padding:6px 8px; background:#0a1020; border-radius:4px; font-size:10px; color:#888; }
+  </style>
+<script src="./theme.js"></script>
+<script src="./map-styles.js"></script>
+</head>
+<body>
+<script>fetch("/api/auth/me",{credentials:"include"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{if(!d||!d.authenticated)throw 0}).catch(()=>{document.body.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;font-family:sans-serif;background:#05060a"><i class="fa-solid fa-lock" style="font-size:48px;color:#f43f5e"></i><h2 style="color:#e2e8f0">Authentication Required</h2><p style="color:#94a3b8">Please log in through the WebUI first.</p><a href="./index.html" style="color:#00ccff;text-decoration:none;padding:8px 20px;border:1px solid #00ccff;border-radius:6px;margin-top:8px">Go to Login</a></div>'})</script>
+
+<div id="topbar">
+  <h1><i class="fa-solid fa-satellite-dish"></i> Wardriving</h1>
+  <select id="sessionSel"></select>
+  <button onclick="loadSession()"><i class="fa-solid fa-rotate"></i></button>
+  <button id="btnLive" onclick="toggleLive()"><i class="fa-solid fa-tower-broadcast"></i> Live <i id="liveDot" class="fa-solid fa-circle"></i></button>
+  <select id="themeSel" onchange="_rjSetTheme(map,this.value)" title="Map theme">
+    <option value="dark">🌃 Dark</option>
+    <option value="satellite">🛰️ Satellite</option>
+    <option value="topo">🏔️ Topo</option>
+    <option value="osm">🗺️ OSM</option>
+  </select>
+  <button id="btnReplay" onclick="toggleReplay()" title="Replay route"><i class="fa-solid fa-clock-rotate-left"></i> Replay</button>
+  <div class="spacer"></div>
+  <a href="./index.html"><i class="fa-solid fa-arrow-left"></i> WebUI</a>
+</div>
+
+<div id="main">
+  <div id="map"></div>
+  <div id="panel">
+    <div id="panelHead">Networks <span id="pCount"></span></div>
+    <input id="searchBox" type="text" placeholder="Search SSID / MAC..." oninput="applyFilters()">
+    <div id="filterBar">
+      <select id="fAuth" onchange="applyFilters()">
+        <option value="">All Auth</option>
+        <option value="OPEN">Open</option>
+        <option value="WEP">WEP</option>
+        <option value="WPA">WPA</option>
+        <option value="WPA2">WPA2</option>
+        <option value="WPA3">WPA3</option>
+      </select>
+      <select id="fSignal" onchange="applyFilters()">
+        <option value="">All Signal</option>
+        <option value="-50">Strong (>-50)</option>
+        <option value="-70">Medium (>-70)</option>
+        <option value="-85">Weak (>-85)</option>
+        <option value="-100">Very Weak</option>
+      </select>
+      <select id="fCh" onchange="applyFilters()">
+        <option value="">All Ch</option>
+        <option value="2g">2.4GHz</option>
+        <option value="5g">5GHz</option>
+      </select>
+      <button class="fb" id="fGps" onclick="toggleFilter('fGps')" title="GPS only">GPS</button>
+      <button class="fb" id="fHidden" onclick="toggleFilter('fHidden')" title="Hidden SSIDs">Hidden</button>
+      <button class="fb" id="fShowHidden" onclick="toggleShowHidden()" title="Show hidden APs">Masked(<span id="hiddenCount">0</span>)</button>
+    </div>
+    <div id="apList"></div>
+  </div>
+  <div id="toggleBtn" onclick="togglePanel()"><i class="fa-solid fa-chevron-right"></i></div>
+
+  <div id="statsOverlay">
+    <span class="s">AP: <span class="v" id="sT" style="color:var(--accent)">0</span></span>
+    <span class="s">GPS: <span class="v" id="sG" style="color:var(--green)">0</span></span>
+    <span class="s">Open: <span class="v" id="sO" style="color:var(--red)">0</span></span>
+    <span class="s">WPA2: <span class="v" id="s2" style="color:var(--accent)">0</span></span>
+    <span class="s">WPA3: <span class="v" id="s3" style="color:var(--green)">0</span></span>
+  </div>
+
+  <!-- AP Detail slide-out panel -->
+  <div id="apDetail">
+    <div id="apDetailClose" onclick="closeDetail()"><i class="fa-solid fa-xmark"></i></div>
+    <div id="apDetailContent"></div>
+  </div>
+
+  <div id="legend">
+    <div style="font-weight:600;color:var(--accent);margin-bottom:4px">Legend</div>
+    <div class="row"><div class="swatch" style="background:var(--red)"></div> Open</div>
+    <div class="row"><div class="swatch" style="background:var(--orange)"></div> WEP</div>
+    <div class="row"><div class="swatch" style="background:var(--yellow)"></div> WPA</div>
+    <div class="row"><div class="swatch" style="background:var(--accent)"></div> WPA2</div>
+    <div class="row"><div class="swatch" style="background:var(--green)"></div> WPA3</div>
+    <div style="margin-top:4px;border-top:1px solid #1a2844;padding-top:4px">
+      <div class="row"><div class="line" style="background:linear-gradient(90deg,#ff000066,#00ff8866)"></div> Route (time gradient)</div>
+      <div class="row"><div class="swatch" style="background:#fff;width:6px;height:6px"></div> GPS position</div>
+    </div>
+    <div style="margin-top:4px;color:#555;cursor:pointer" onclick="this.parentElement.style.display='none';document.getElementById('legendToggle').style.display='block'">
+      <i class="fa-solid fa-xmark"></i> close
+    </div>
+  </div>
+  <div id="legendToggle" onclick="document.getElementById('legend').style.display='block';this.style.display='none'">
+    <i class="fa-solid fa-map"></i> Legend
+  </div>
+
+  <div id="timeline">
+    <div class="tl-row">
+      <div class="tl-btn" id="tlPlay" onclick="tlTogglePlay()"><i class="fa-solid fa-play"></i></div>
+      <div class="tl-btn" onclick="tlReset()" title="Reset"><i class="fa-solid fa-backward-fast"></i></div>
+      <input type="range" id="tlSlider" min="0" max="100" value="0" oninput="tlSeek(this.value)">
+      <span id="tlTime">--:--</span>
+      <span id="tlCount">0 / 0</span>
+      <select id="tlSpeed" onchange="tlSetSpeed(this.value)" title="Speed">
+        <option value="0.5">0.5x</option>
+        <option value="1" selected>1x</option>
+        <option value="2">2x</option>
+        <option value="5">5x</option>
+        <option value="10">10x</option>
+        <option value="25">25x</option>
+      </select>
+      <div class="tl-btn" onclick="toggleReplay()" title="Close"><i class="fa-solid fa-xmark"></i></div>
+    </div>
+  </div>
+</div>
+
+<script src="./vendor/leaflet/leaflet.js"></script>
+<script>
+L.Icon.Default.prototype.options.imagePath = './vendor/leaflet/';
+
+const canvasRenderer = L.canvas({padding:0.5});
+const map = L.map('map', {zoomControl:false, preferCanvas:true}).setView([49.18,-0.37],14);
+L.control.zoom({position:'topright'}).addTo(map);
+_rjInitMap(map);
+
+let markersLayer = L.layerGroup().addTo(map);
+let routeLayer = L.layerGroup().addTo(map);
+let allNets = [];
+let liveInterval = null;
+let hiddenMacs = new Set();
+try { const h = localStorage.getItem('wd_hidden'); if(h) hiddenMacs = new Set(JSON.parse(h)); } catch(e){}
+function saveHidden() { try { localStorage.setItem('wd_hidden', JSON.stringify([...hiddenMacs])); } catch(e){} }
+
+function secInfo(auth) {
+  if (!auth) return {cls:'b-wpa2',label:'?',color:'#888'};
+  if (auth.includes('WPA3')) return {cls:'b-wpa3',label:'WPA3',color:'#00ff88'};
+  if (auth.includes('WPA2')) return {cls:'b-wpa2',label:'WPA2',color:'#00ccff'};
+  if (auth.includes('WPA')&&!auth.includes('WPA2')) return {cls:'b-wpa',label:'WPA',color:'#ffaa00'};
+  if (auth.includes('WEP')) return {cls:'b-wep',label:'WEP',color:'#ff8800'};
+  return {cls:'b-open',label:'OPEN',color:'#ff3333'};
+}
+
+function csvSplitRow(line) {
+  const r = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"' && i+1 < line.length && line[i+1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') { inQ = false; }
+      else { cur += ch; }
+    } else {
+      if (ch === '"') { inQ = true; }
+      else if (ch === ',') { r.push(cur); cur = ''; }
+      else { cur += ch; }
+    }
+  }
+  r.push(cur);
+  return r;
+}
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 3) return [];
+  const h = lines[1].split(',');
+  const g = k => h.indexOf(k);
+  const result = [];
+  for (let i=2; i<lines.length; i++) {
+    const c = csvSplitRow(lines[i]);
+    if (c.length<7) continue;
+    const lat = parseFloat(c[g('CurrentLatitude')]);
+    const lon = parseFloat(c[g('CurrentLongitude')]);
+    const hasGps = !isNaN(lat) && !isNaN(lon) && !(lat===0&&lon===0) && Math.abs(lat)>1 && Math.abs(lat)<90;
+    result.push({
+      mac:c[g('MAC')]||'', ssid:c[g('SSID')]||'', auth:c[g('AuthMode')]||'',
+      channel:c[g('Channel')]||'', rssi:c[g('RSSI')]||'',
+      firstSeen:c[g('FirstSeen')]||'',
+      lat:hasGps?lat:null, lon:hasGps?lon:null, hasGps,
+    });
+  }
+  return result;
+}
+
+// --- Clustering: grid-based at low zoom ---
+function clusterNets(nets, zoom) {
+  if (zoom >= 15) return null;
+  const gridSize = zoom <= 10 ? 0.01 : zoom <= 12 ? 0.004 : 0.002;
+  const clusters = new Map();
+  for (const n of nets) {
+    if (!n.hasGps) continue;
+    const gx = Math.floor(n.lat/gridSize);
+    const gy = Math.floor(n.lon/gridSize);
+    const key = gx+','+gy;
+    if (!clusters.has(key)) {
+      clusters.set(key, {lat:0,lon:0,count:0,open:0,wep:0,wpa:0,wpa2:0,wpa3:0});
+    }
+    const cl = clusters.get(key);
+    cl.lat += n.lat; cl.lon += n.lon; cl.count++;
+    const lb = secInfo(n.auth).label;
+    if (lb==='OPEN') cl.open++;
+    else if (lb==='WEP') cl.wep++;
+    else if (lb==='WPA') cl.wpa++;
+    else if (lb==='WPA2') cl.wpa2++;
+    else if (lb==='WPA3') cl.wpa3++;
+  }
+  const result = [];
+  for (const cl of clusters.values()) {
+    cl.lat /= cl.count; cl.lon /= cl.count;
+    result.push(cl);
+  }
+  return result;
+}
+
+function dominantColor(cl) {
+  const mx = Math.max(cl.wpa3,cl.wpa2,cl.wpa,cl.wep,cl.open);
+  if (mx===cl.open && cl.open>0) return '#ff3333';
+  if (mx===cl.wep && cl.wep>0) return '#ff8800';
+  if (mx===cl.wpa && cl.wpa>0) return '#ffaa00';
+  if (mx===cl.wpa3 && cl.wpa3>0) return '#00ff88';
+  return '#00ccff';
+}
+
+// --- Render map with clustering ---
+function renderMap(visibleNets) {
+  const raw = visibleNets || allNets;
+  const nets = visibleNets ? raw : getFiltered(raw);
+  markersLayer.clearLayers();
+  routeLayer.clearLayers();
+  const gpsNets = nets.filter(n => n.hasGps);
+  if (!gpsNets.length) return;
+
+  const sorted = [...gpsNets].sort((a,b) => (a.firstSeen||'').localeCompare(b.firstSeen||''));
+
+  // Route: batch segments by color groups to reduce polyline count
+  if (sorted.length >= 2) {
+    const step = Math.max(1, Math.floor(sorted.length / 300));
+    for (let i=0; i<sorted.length-1; i+=step) {
+      const end = Math.min(i+step, sorted.length-1);
+      const ratio = i/(sorted.length-1);
+      const r = Math.round(255*(1-ratio));
+      const g = Math.round(255*ratio);
+      const b = Math.round(100+100*Math.sin(ratio*Math.PI));
+      const color = `rgb(${r},${g},${b})`;
+      const pts = [];
+      for (let j=i; j<=end; j++) pts.push([sorted[j].lat, sorted[j].lon]);
+      L.polyline(pts, {color, weight:6, opacity:0.15, renderer:canvasRenderer}).addTo(routeLayer);
+      L.polyline(pts, {color, weight:2, opacity:0.7, renderer:canvasRenderer}).addTo(routeLayer);
+    }
+  }
+
+  const zoom = map.getZoom();
+  const clusters = clusterNets(gpsNets, zoom);
+
+  if (clusters) {
+    // Clustered view
+    for (const cl of clusters) {
+      const color = dominantColor(cl);
+      const radius = Math.min(28, 8 + Math.sqrt(cl.count)*2);
+      const m = L.circleMarker([cl.lat,cl.lon], {
+        radius, fillColor:color, color, weight:1, fillOpacity:0.5, renderer:canvasRenderer,
+      });
+      m.bindPopup(`<div style="font-family:monospace;font-size:11px">
+        <b style="color:var(--accent)">${cl.count} networks</b><br>
+        <span style="color:#ff3333">Open:${cl.open}</span>
+        <span style="color:#ff8800"> WEP:${cl.wep}</span>
+        <span style="color:#ffaa00"> WPA:${cl.wpa}</span><br>
+        <span style="color:#00ccff">WPA2:${cl.wpa2}</span>
+        <span style="color:#00ff88"> WPA3:${cl.wpa3}</span>
+      </div>`);
+      markersLayer.addLayer(m);
+      // Count label
+      if (cl.count > 1) {
+        const icon = L.divIcon({
+          className:'', iconSize:[30,14],
+          html:`<div style="color:#fff;font-size:10px;font-weight:700;text-align:center;text-shadow:0 0 3px #000">${cl.count}</div>`,
+        });
+        L.marker([cl.lat,cl.lon],{icon,interactive:false}).addTo(markersLayer);
+      }
+    }
+  } else {
+    // Individual markers
+    const bounds = [];
+    for (const n of gpsNets) {
+      const {color} = secInfo(n.auth);
+      const c = L.circleMarker([n.lat,n.lon], {
+        radius:5, fillColor:color, color, weight:1, fillOpacity:0.9, renderer:canvasRenderer,
+      });
+      c.on('click', (function(net) { return function() { onMarkerClick(net); }; })(n));
+      markersLayer.addLayer(c);
+      bounds.push([n.lat,n.lon]);
+    }
+  }
+
+}
+
+function fitMapBounds() {
+  const gpsNets = allNets.filter(n => n.hasGps);
+  const bounds = gpsNets.map(n=>[n.lat,n.lon]);
+  if (bounds.length) map.fitBounds(bounds, {padding:[30,30], maxZoom:16});
+}
+
+// Re-cluster on zoom change
+map.on('zoomend', function() {
+  if (replayActive) { tlSeek(document.getElementById('tlSlider').value); }
+  else { renderMap(); }
+});
+
+function renderStats(nets) {
+  const src = nets || getFiltered(allNets);
+  document.getElementById('sT').textContent = src.length;
+  document.getElementById('sG').textContent = src.filter(n=>n.hasGps).length;
+  document.getElementById('sO').textContent = src.filter(n=>secInfo(n.auth).label==='OPEN').length;
+  document.getElementById('s2').textContent = src.filter(n=>n.auth.includes('WPA2')).length;
+  document.getElementById('s3').textContent = src.filter(n=>n.auth.includes('WPA3')).length;
+}
+
+function toggleFilter(id) {
+  document.getElementById(id).classList.toggle('on');
+  applyFilters();
+}
+
+function getFiltered(src) {
+  let filtered = [...src];
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  const fAuth = document.getElementById('fAuth').value;
+  const fSignal = document.getElementById('fSignal').value;
+  const fCh = document.getElementById('fCh').value;
+  const fGps = document.getElementById('fGps').classList.contains('on');
+  const fHidden = document.getElementById('fHidden').classList.contains('on');
+
+  if (q) filtered = filtered.filter(n => (n.ssid||'').toLowerCase().includes(q) || n.mac.toLowerCase().includes(q));
+  if (fAuth) filtered = filtered.filter(n => secInfo(n.auth).label === fAuth);
+  if (fSignal) {
+    const min = parseInt(fSignal);
+    filtered = filtered.filter(n => (parseInt(n.rssi)||-99) >= min);
+  }
+  if (fCh === '2g') filtered = filtered.filter(n => { const c=parseInt(n.channel); return c>=1&&c<=14; });
+  if (fCh === '5g') filtered = filtered.filter(n => { const c=parseInt(n.channel); return c>=36; });
+  if (fGps) filtered = filtered.filter(n => n.hasGps);
+  if (fHidden) filtered = filtered.filter(n => !n.ssid || n.ssid.trim()==='');
+  filtered = filtered.filter(n => !hiddenMacs.has(n.mac));
+
+  return filtered;
+}
+
+function applyFilters() {
+  renderPanel();
+  renderMap();
+  renderStats();
+}
+
+function renderPanel(nets) {
+  const src = nets || allNets;
+  const filtered = getFiltered(src);
+  filtered.sort((a,b) => {
+    if (a.hasGps&&!b.hasGps) return -1;
+    if (!a.hasGps&&b.hasGps) return 1;
+    return (parseInt(b.rssi)||-99) - (parseInt(a.rssi)||-99);
+  });
+  document.getElementById('pCount').textContent = `(${filtered.length}/${src.length})`;
+  const el = document.getElementById('apList');
+  const max = Math.min(filtered.length, 300);
+  let html = '';
+  for (let i=0; i<max; i++) {
+    const n = filtered[i];
+    const {cls,label,color} = secInfo(n.auth);
+    html += `<div class="ap" onclick="focusAP(${i})" data-i="${i}">
+      <div class="dot" style="background:${n.hasGps?color:'#222'}"></div>
+      <div class="name">${n.ssid||'(hidden)'}</div>
+      <div class="badge ${cls}">${label}</div>
+      <div class="sig">${n.rssi}</div>
+    </div>`;
+  }
+  el.innerHTML = html;
+  window._panelNets = filtered;
+}
+
+function focusAP(i) {
+  const n = window._panelNets[i];
+  if (!n) return;
+  if (n.hasGps) {
+    map.setView([n.lat,n.lon], 18);
+    const flash = L.circleMarker([n.lat,n.lon], {
+      radius:18, fillColor:'#fff', color:secInfo(n.auth).color,
+      weight:2, fillOpacity:0.2, renderer:canvasRenderer,
+    }).addTo(map);
+    setTimeout(()=>map.removeLayer(flash), 2000);
+  }
+  showDetail(n);
+}
+
+function showDetail(n) {
+  const {cls,label,color} = secInfo(n.auth);
+  const rssiVal = parseInt(n.rssi)||-99;
+  const sigBars = Math.min(4, Math.max(0, Math.floor((rssiVal+90)/10)));
+  const bars = '\u2588'.repeat(sigBars)+'\u2591'.repeat(4-sigBars);
+  let html = '<div class="detail-header">'+(n.ssid||'(hidden)')+'</div>';
+  html += '<div class="detail-sec '+cls+'" style="color:'+color+';border:1px solid '+color+'">'+label+'</div>';
+  html += '<div class="detail-row"><span class="detail-label">MAC</span><span class="detail-val">'+n.mac+'</span></div>';
+  html += '<div class="detail-row"><span class="detail-label">Auth</span><span class="detail-val" style="color:'+color+'">'+n.auth+'</span></div>';
+  html += '<div class="detail-row"><span class="detail-label">Channel</span><span class="detail-val">'+n.channel+'</span></div>';
+  html += '<div class="detail-row"><span class="detail-label">Signal</span><span class="detail-val">'+n.rssi+' dBm <span style="color:'+color+';letter-spacing:-1px">'+bars+'</span></span></div>';
+  html += '<div class="detail-row"><span class="detail-label">First Seen</span><span class="detail-val">'+(n.firstSeen||'?')+'</span></div>';
+  if (n.hasGps) {
+    html += '<div class="detail-gps"><i class="fa-solid fa-location-dot" style="color:#00ff88"></i> '+n.lat.toFixed(6)+', '+n.lon.toFixed(6)+'</div>';
+  } else {
+    html += '<div class="detail-gps"><i class="fa-solid fa-location-dot" style="color:#333"></i> No GPS data</div>';
+  }
+  const isHidden = hiddenMacs.has(n.mac);
+  html += '<div style="margin-top:10px;display:flex;gap:6px">';
+  html += '<button onclick="toggleHideAP(\''+n.mac+'\')" style="flex:1;padding:5px;border:1px solid '+(isHidden?'#00ff88':'#ff3333')+';background:'+(isHidden?'#002a1a':'#2a0000')+';color:'+(isHidden?'#00ff88':'#ff3333')+';border-radius:4px;cursor:pointer;font-size:11px;font-family:monospace">'+(isHidden?'<i class="fa-solid fa-eye"></i> Show':'<i class="fa-solid fa-eye-slash"></i> Hide')+'</button>';
+  html += '</div>';
+  document.getElementById('apDetailContent').innerHTML = html;
+  document.getElementById('apDetail').classList.add('open');
+}
+
+function toggleHideAP(mac) {
+  if (hiddenMacs.has(mac)) {
+    hiddenMacs.delete(mac);
+  } else {
+    hiddenMacs.add(mac);
+  }
+  saveHidden();
+  updateHiddenCount();
+  closeDetail();
+  applyFilters();
+}
+
+function toggleShowHidden() {
+  const btn = document.getElementById('fShowHidden');
+  if (btn.classList.contains('on')) {
+    btn.classList.remove('on');
+  } else {
+    btn.classList.add('on');
+    hiddenMacs.clear();
+    saveHidden();
+    updateHiddenCount();
+    applyFilters();
+  }
+}
+
+function updateHiddenCount() {
+  document.getElementById('hiddenCount').textContent = hiddenMacs.size;
+}
+
+function closeDetail() { document.getElementById('apDetail').classList.remove('open'); }
+
+function onMarkerClick(n) {
+  // Open detail panel
+  showDetail(n);
+  // Highlight in side panel list
+  const pnets = window._panelNets || [];
+  for (let i = 0; i < pnets.length; i++) {
+    if (pnets[i].mac === n.mac) {
+      const el = document.querySelector(`#apList .ap[data-i="${i}"]`);
+      if (el) {
+        el.scrollIntoView({block:'center'});
+        el.style.background = '#1a2850';
+        setTimeout(() => { el.style.background = ''; }, 2000);
+      }
+      break;
+    }
+  }
+  // Flash on map
+  if (n.hasGps) {
+    const flash = L.circleMarker([n.lat, n.lon], {
+      radius:18, fillColor:'#fff', color:secInfo(n.auth).color,
+      weight:2, fillOpacity:0.2, renderer:canvasRenderer,
+    }).addTo(map);
+    setTimeout(() => map.removeLayer(flash), 2000);
+  }
+}
+
+function renderAll() { renderMap(); renderStats(); renderPanel(); fitMapBounds(); }
+
+function togglePanel() {
+  const p = document.getElementById('panel');
+  const ic = document.querySelector('#toggleBtn i');
+  p.classList.toggle('collapsed');
+  ic.className = p.classList.contains('collapsed') ? 'fa-solid fa-chevron-left':'fa-solid fa-chevron-right';
+  setTimeout(()=>map.invalidateSize(), 300);
+}
+
+// --- Timeline Replay ---
+let replayActive = false;
+let replayPlaying = false;
+let replayTimer = null;
+let replaySorted = [];
+let replaySpeed = 1;
+
+function toggleReplay() {
+  replayActive = !replayActive;
+  const tl = document.getElementById('timeline');
+  const btn = document.getElementById('btnReplay');
+  const legend = document.getElementById('legend');
+  if (replayActive) {
+    replaySorted = [...allNets].filter(n=>n.firstSeen && !hiddenMacs.has(n.mac)).sort((a,b)=>(a.firstSeen||'').localeCompare(b.firstSeen||''));
+    if (replaySorted.length < 2) { replayActive=false; return; }
+    tl.style.display = 'block';
+    btn.classList.add('active');
+    legend.style.bottom = '64px';
+    document.getElementById('tlSlider').max = replaySorted.length;
+    document.getElementById('tlSlider').value = 0;
+    tlSeek(0);
+  } else {
+    tlStop();
+    tl.style.display = 'none';
+    btn.classList.remove('active');
+    legend.style.bottom = '20px';
+    renderAll();
+  }
+}
+
+function tlSeek(val) {
+  const idx = parseInt(val);
+  const visible = replaySorted.slice(0, idx);
+  renderMap(visible);
+  renderStats(visible);
+  renderPanel(visible);
+
+  if (idx > 0) {
+    const n = replaySorted[idx-1];
+    const time = (n.firstSeen||'').split(' ')[1] || '--:--';
+    document.getElementById('tlTime').textContent = time;
+    // Move map to latest point
+    if (n.hasGps) map.panTo([n.lat,n.lon], {animate:true, duration:0.3});
+  } else {
+    document.getElementById('tlTime').textContent = '--:--';
+  }
+  document.getElementById('tlCount').textContent = idx+' / '+replaySorted.length;
+}
+
+function tlTogglePlay() {
+  if (replayPlaying) { tlStop(); }
+  else { tlPlay(); }
+}
+
+function tlPlay() {
+  replayPlaying = true;
+  document.querySelector('#tlPlay i').className = 'fa-solid fa-pause';
+  document.getElementById('tlPlay').classList.add('active');
+  tlTick();
+}
+
+function tlStop() {
+  replayPlaying = false;
+  if (replayTimer) { cancelAnimationFrame(replayTimer); replayTimer=null; }
+  document.querySelector('#tlPlay i').className = 'fa-solid fa-play';
+  document.getElementById('tlPlay').classList.remove('active');
+}
+
+let _lastTick = 0;
+function tlTick() {
+  if (!replayPlaying) return;
+  const now = performance.now();
+  // Throttle: advance every 80ms base, faster with speed multiplier
+  const interval = 80 / replaySpeed;
+  if (now - _lastTick < interval) { replayTimer = requestAnimationFrame(tlTick); return; }
+  _lastTick = now;
+
+  const slider = document.getElementById('tlSlider');
+  let v = parseInt(slider.value) + 1;
+  if (v > replaySorted.length) { tlStop(); return; }
+  slider.value = v;
+  tlSeek(v);
+  replayTimer = requestAnimationFrame(tlTick);
+}
+
+function tlReset() {
+  const slider = document.getElementById('tlSlider');
+  slider.value = 0;
+  tlSeek(0);
+}
+
+function tlSetSpeed(val) { replaySpeed = parseFloat(val); }
+
+// --- Data loading ---
+async function loadSessionList() {
+  try {
+    const r = await fetch('/api/wardriving/sessions', {credentials:'include'});
+    if (r.ok) {
+      const s = await r.json();
+      const sel = document.getElementById('sessionSel');
+      sel.innerHTML = '';
+      const live = document.createElement('option');
+      live.value = '__live__'; live.textContent = '⚡ Live';
+      sel.appendChild(live);
+      s.forEach(x => {
+        const o = document.createElement('option');
+        o.value = x.path; o.textContent = x.name;
+        sel.appendChild(o);
+      });
+    }
+  } catch(e){}
+}
+
+async function loadSession() {
+  const path = document.getElementById('sessionSel').value;
+  if (!path) return;
+  if (path === '__live__') {
+    if (!liveInterval) toggleLive();
+    return;
+  }
+  if (liveInterval) toggleLive();
+  try {
+    const r = await fetch(`/api/wardriving/session?path=${encodeURIComponent(path)}`, {credentials:'include'});
+    if (r.ok) {
+      allNets = parseCSV(await r.text());
+      if (replayActive) toggleReplay();
+      renderAll();
+    }
+  } catch(e){}
+}
+
+async function loadLive() {
+  try {
+    const r = await fetch('/api/wardriving/live', {credentials:'include'});
+    if (r.ok) {
+      const fresh = parseCSV(await r.text());
+      const m = new Map(allNets.map(n=>[n.mac,n]));
+      fresh.forEach(n=>m.set(n.mac,n));
+      allNets = [...m.values()];
+      renderAll();
+    }
+  } catch(e){}
+}
+
+async function toggleLive() {
+  const btn = document.getElementById('btnLive');
+  const dot = document.getElementById('liveDot');
+  if (liveInterval) {
+    clearInterval(liveInterval); liveInterval=null;
+    btn.classList.remove('active'); dot.style.display='none';
+    try { await fetch('/api/wardriving/stop', {method:'POST', credentials:'include'}); } catch(e){}
+  } else {
+    try {
+      const r = await fetch('/api/wardriving/start', {method:'POST', credentials:'include'});
+      if (!r.ok) { alert('Failed to start wardriving'); return; }
+    } catch(e) { alert('Connection error'); return; }
+    allNets = [];
+    markersLayer.clearLayers();
+    routeLayer.clearLayers();
+    renderAll();
+    btn.classList.add('active'); dot.style.display='inline';
+    setTimeout(loadLive, 3000);
+    liveInterval = setInterval(loadLive, 2000);
+  }
+}
+
+loadSessionList();
+updateHiddenCount();
+</script>
+</body>
+</html>

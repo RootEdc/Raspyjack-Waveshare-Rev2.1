@@ -1,0 +1,10 @@
+# RaspyJack HTTPS reverse proxy (self-signed cert).
+# Cert is auto-generated at boot by rj-cert.service with current IPs.
+
+:443 {
+    tls /etc/caddy/certs/raspyjack.crt /etc/caddy/certs/raspyjack.key
+
+    @ws path /ws*
+    reverse_proxy @ws 127.0.0.1:8765
+    reverse_proxy 127.0.0.1:8080
+}

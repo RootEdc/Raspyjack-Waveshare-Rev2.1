@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RaspyJack Meteor Satellite Receiver</title>
+  <link rel="stylesheet" href="./vendor/css/fontawesome.min.css">
+  <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
+  <style>
+    :root{color-scheme:dark;--bg:#05060a;--panel:#080c14;--border:#0f1a2a;--accent:#00ccff;--green:#00ff88;--red:#ff3333;--orange:#ff8800;--yellow:#ffaa00;--card:#0a0e18}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:#ccc;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-thumb{background:#1a2844;border-radius:2px}
+
+    #topbar{height:42px;background:#0a0e1a;display:flex;align-items:center;padding:0 12px;gap:8px;border-bottom:1px solid var(--border);flex-shrink:0}
+    #topbar h1{font-size:13px;color:var(--accent);white-space:nowrap;display:flex;align-items:center;gap:5px}
+    .status-badge{padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;font-family:'Courier New',monospace}
+    .status-idle{background:rgba(100,100,100,.1);color:#555;border:1px solid #333}
+    .status-waiting{background:rgba(255,200,0,.1);color:var(--yellow);border:1px solid rgba(255,200,0,.3);animation:blink 2s infinite}
+    .status-capturing{background:rgba(255,50,50,.1);color:var(--red);border:1px solid rgba(255,50,50,.3);animation:blink 1s infinite}
+    .status-decoding{background:rgba(255,170,0,.1);color:var(--orange);border:1px solid rgba(255,170,0,.3);animation:blink 1.5s infinite}
+    .status-done{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.3)}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
+    .tb-k{font-size:10px;font-family:'Courier New',monospace;display:flex;align-items:center;gap:3px;white-space:nowrap}
+    .tb-k i{color:#2a4060;font-size:8px}
+    .tb-k .v{font-weight:600}
+    .tb-k .u{color:#2a4060;font-size:8px}
+    .spacer{flex:1}
+    #topbar a{color:#3a5070;font-size:10px;text-decoration:none;white-space:nowrap}
+    #topbar a:hover{color:var(--accent)}
+    .live-btn{background:#111830;color:#888;border:1px solid #1a2844;padding:3px 10px;border-radius:5px;font-size:10px;cursor:pointer;display:flex;align-items:center;gap:4px}
+    .live-btn:hover{color:#fff;background:#1a2850}
+    .live-btn.on{border-color:var(--accent);color:var(--accent)}
+    .live-dot{display:none;color:var(--green);font-size:6px;animation:blink 1.5s infinite}
+
+    #main{display:flex;flex:1;min-height:0}
+
+    #imagePanel{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#030508;position:relative;min-width:0}
+    #satImage{max-width:100%;max-height:100%;object-fit:contain;display:none}
+    #imageOverlay{text-align:center;color:#1a3050}
+    #imageOverlay i{font-size:48px;display:block;margin-bottom:12px}
+    #imageOverlay .title{font-size:16px;margin-bottom:6px}
+    #imageOverlay .sub{font-size:11px;color:#0f2030}
+    #progressBar{position:absolute;bottom:0;left:0;right:0;height:4px;background:#0a1020}
+    #progressFill{height:100%;background:var(--accent);width:0;transition:width 1s}
+    #progressLabel{position:absolute;bottom:8px;right:8px;font-size:9px;color:#3a5070;font-family:'Courier New',monospace}
+    #captureInfo{position:absolute;top:8px;left:8px;font-size:9px;color:#4a6080;font-family:'Courier New',monospace}
+
+    #rightPanel{width:340px;display:flex;flex-direction:column;border-left:1px solid var(--border);flex-shrink:0;min-height:0}
+    #tabBar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+    .tab-btn{flex:1;padding:6px 0;text-align:center;font-size:9px;color:#4a6080;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+    .tab-btn:hover{color:#ccc}
+    .tab-btn.on{color:var(--accent);border-bottom-color:var(--accent)}
+    .main-tab{flex:1;padding:7px 0;text-align:center;font-size:10px;color:#3a5070;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px}
+    .main-tab:hover{color:#ccc;background:rgba(0,204,255,.02)}
+    .main-tab.on{color:var(--accent);border-bottom-color:var(--accent);background:rgba(0,204,255,.04)}
+    .main-pane{flex:1;min-height:0;position:relative}
+    .leaflet-container{background:#030508!important}
+    .sat-label{background:rgba(8,12,20,.85)!important;border:1px solid rgba(100,100,100,.3)!important;color:#ccc!important;font-size:9px!important;font-family:'Courier New',monospace!important;padding:1px 5px!important;border-radius:3px!important;box-shadow:none!important}
+    .leaflet-control-attribution{display:none!important}
+    .tab-pane{display:none;flex:1;overflow-y:auto;padding:8px 10px}
+    .tab-pane.on{display:block}
+
+    .pass-row{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #080c14;font-size:10px;cursor:pointer;transition:background .1s}
+    .pass-row:hover{background:rgba(0,204,255,.03)}
+    .pass-row.next{background:rgba(0,204,255,.05);border-left:3px solid var(--accent);padding-left:6px}
+    .pass-sat{font-weight:700;min-width:55px}
+    .pass-time{font-family:'Courier New',monospace;min-width:40px;color:var(--accent)}
+    .pass-el{font-family:'Courier New',monospace;min-width:30px;font-weight:600}
+    .pass-dir{color:#4a6080;min-width:40px}
+    .pass-dur{color:#4a6080;font-family:'Courier New',monospace;min-width:40px}
+    .pass-freq{color:#3a5070;font-size:9px}
+
+    .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}
+    .gallery-item{cursor:pointer;border:1px solid var(--border);border-radius:6px;overflow:hidden;transition:border-color .15s}
+    .gallery-item:hover{border-color:var(--accent)}
+    .gallery-item img{width:100%;height:80px;object-fit:cover;display:block}
+    .gallery-item .gi-name{font-size:8px;padding:3px 5px;color:#4a6080;font-family:'Courier New',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+    .stat-row{display:flex;justify-content:space-between;padding:4px 0;font-size:10px;border-bottom:1px solid #080c14}
+    .stat-row .sl{color:#4a6080}
+    .stat-row .sv{font-family:'Courier New',monospace}
+
+    .countdown{font-size:24px;font-weight:700;font-family:'Courier New',monospace;color:var(--accent);margin-top:8px}
+
+    @media(max-width:700px){
+      #main{flex-direction:column}
+      #rightPanel{width:100%;height:50%;border-left:none;border-top:1px solid var(--border)}
+      #imagePanel{min-height:200px}
+    }
+  </style>
+<script src="./theme.js"></script>
+<script src="./map-styles.js"></script>
+</head>
+<body>
+<script src="./vendor/leaflet/leaflet.js"></script>
+<script>fetch("/api/auth/me",{credentials:"include"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{if(!d||!d.authenticated)throw 0}).catch(()=>{document.body.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;font-family:sans-serif;background:#05060a"><i class="fa-solid fa-lock" style="font-size:48px;color:#f43f5e"></i><h2 style="color:#e2e8f0">Authentication Required</h2><p style="color:#94a3b8">Please log in first.</p><a href="./index.html" style="color:#00ccff;text-decoration:none;padding:8px 20px;border:1px solid #00ccff;border-radius:6px">Login</a></div>'})</script>
+
+<div id="topbar">
+  <h1><i class="fa-solid fa-satellite-dish"></i> Meteor Receiver</h1>
+  <span id="statusBadge" class="status-badge status-idle">IDLE</span>
+  <div class="tb-k"><i class="fa-solid fa-satellite"></i><span class="v" id="kSat">--</span></div>
+  <div class="tb-k"><i class="fa-solid fa-signal"></i><span class="v" id="kFreq">--</span><span class="u">MHz</span></div>
+  <div class="spacer"></div>
+  <select id="manualSat" style="background:#111830;color:var(--accent);border:1px solid #1a2844;padding:3px 6px;border-radius:5px;font-size:10px;cursor:pointer">
+    <option value="137.9">Meteor M2-3 (137.9)</option>
+    <option value="137.9" selected>Meteor M2-4 (137.9)</option>
+  </select>
+  <button id="btnCapNow" class="live-btn" onclick="captureNow()"><i class="fa-solid fa-play"></i> Capture Now</button>
+  <button id="btnLive" class="live-btn" onclick="toggleLive()"><i class="fa-solid fa-tower-broadcast"></i> Live <i class="fa-solid fa-circle live-dot" id="liveDot"></i></button>
+  <select id="themeSel" onchange="if(_meteorMap)_rjSetTheme(_meteorMap,this.value)" title="Map theme" style="background:#111830;color:#888;border:1px solid #1a2844;padding:3px 6px;border-radius:5px;font-size:10px;cursor:pointer">
+    <option value="dark">🌃 Dark</option>
+    <option value="satellite">🛰️ Satellite</option>
+    <option value="topo">🏔️ Topo</option>
+    <option value="osm">🗺️ OSM</option>
+  </select>
+  <button onclick="showManualPos()" title="Set position manually" style="background:#111830;color:#888;border:1px solid #1a2844;padding:3px 8px;border-radius:5px;font-size:10px;cursor:pointer"><i class="fa-solid fa-map-pin"></i> Set Pos</button>
+  <a href="./index.html"><i class="fa-solid fa-arrow-left"></i> WebUI</a>
+</div>
+
+<div id="mainTabs" style="display:flex;background:#070a12;border-bottom:1px solid var(--border);flex-shrink:0">
+  <div class="main-tab on" onclick="showMainTab('capture')"><i class="fa-solid fa-satellite-dish"></i> Capture</div>
+  <div class="main-tab" onclick="showMainTab('map')"><i class="fa-solid fa-map-location-dot"></i> Map</div>
+  <div class="main-tab" onclick="showMainTab('gallery')"><i class="fa-solid fa-images"></i> Gallery</div>
+</div>
+
+<div class="main-pane on" id="paneCapture" style="display:flex">
+  <div id="imagePanel" style="flex:1;position:relative;overflow:hidden;background:#030508;display:flex;align-items:center;justify-content:center;min-width:0">
+    <img id="satImage" alt="Satellite image" style="max-width:100%;max-height:100%;display:none">
+    <div id="imageOverlay">
+      <i class="fa-solid fa-satellite-dish"></i>
+      <div class="title">Meteor Satellite Receiver</div>
+      <div class="sub">Start the receiver to capture weather satellite images</div>
+      <div class="sub" style="margin-top:4px">Meteor M2 transmits LRPT on 137.9 MHz during satellite passes</div>
+      <div id="nextPassInfo" style="margin-top:12px;font-size:11px;color:#2a4060"></div>
+      <div id="countdownEl" class="countdown"></div>
+    </div>
+    <div id="captureInfo" style="position:absolute;top:8px;left:8px;font-size:10px;color:var(--accent);font-family:'Courier New',monospace"></div>
+    <div id="progressBar" style="display:none;position:absolute;bottom:0;left:0;right:0;height:4px;background:#0a1020"><div id="progressFill" style="height:100%;background:var(--accent);width:0;transition:width 1s"></div></div>
+    <div id="progressLabel" style="position:absolute;bottom:8px;right:8px;font-size:9px;color:#3a5070;font-family:'Courier New',monospace"></div>
+  </div>
+  <div id="rightPanel">
+    <div id="tabBar">
+      <div class="tab-btn on" onclick="showSubTab('passes')"><i class="fa-solid fa-clock"></i> Passes</div>
+      <div class="tab-btn" onclick="showSubTab('status')"><i class="fa-solid fa-info-circle"></i> Status</div>
+    </div>
+    <div class="sub-pane on" id="subPasses" style="overflow-y:auto;padding:8px 10px;flex:1">
+      <div style="font-size:8px;color:#3a5070;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Upcoming satellite passes</div>
+      <div id="passList"></div>
+    </div>
+    <div class="sub-pane" id="subStatus" style="display:none;overflow-y:auto;padding:8px 10px;flex:1">
+      <div id="statusContent"></div>
+    </div>
+  </div>
+</div>
+
+<div class="main-pane" id="paneGallery" style="display:none;overflow-y:auto;padding:16px">
+  <div id="galleryGrid" class="gallery-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))"></div>
+  <div id="galleryEmpty" style="text-align:center;padding:60px;color:#1a3050;font-size:12px"><i class="fa-solid fa-images" style="font-size:36px;display:block;margin-bottom:10px"></i>No captured images yet</div>
+</div>
+
+<div class="main-pane" id="paneMap" style="display:none">
+  <div id="meteorMapEl" style="width:100%;height:100%;background:#030508"></div>
+</div>
+
+<script>
+let isLive=false,pollIv=null,data={},_nextPassTs=0;
+
+setInterval(()=>{
+  if(!_nextPassTs)return;
+  const diff=Math.max(0,_nextPassTs-Date.now()/1000);
+  const el=document.getElementById('countdownEl');
+  if(diff>0){
+    const h=Math.floor(diff/3600),m=Math.floor(diff%3600/60),s=Math.floor(diff%60);
+    el.textContent=(h>0?h+'h ':'')+(m>0?m+'m ':'')+(s+'s');
+  } else {
+    el.textContent='PASS IN PROGRESS';
+  }
+},1000);
+
+function showMainTab(t){
+  const tabs=['capture','map','gallery'];
+  document.querySelectorAll('.main-tab').forEach((b,i)=>b.classList.toggle('on',tabs[i]===t));
+  document.querySelectorAll('.main-pane').forEach(p=>{p.style.display=p.id==='pane'+t.charAt(0).toUpperCase()+t.slice(1)?'flex':'none'});
+  if(t==='map'){if(!_meteorMap)initMeteorMap();else setTimeout(()=>_meteorMap.invalidateSize(),100)}
+}
+function showSubTab(t){
+  const tabs=['passes','status'];
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('on',tabs[i]===t));
+  document.querySelectorAll('.sub-pane').forEach(p=>{p.style.display=p.id==='sub'+t.charAt(0).toUpperCase()+t.slice(1)?'block':'none'});
+}
+
+function captureNow(){
+  const btn=document.getElementById('btnCapNow');
+  // If capturing, stop it
+  if(data&&data.capturing){
+    fetch('/api/meteor/stop_capture',{method:'POST',credentials:'include'}).catch(()=>{});
+    return;
+  }
+  const sel=document.getElementById('manualSat');
+  const freq=sel.value;
+  const sat=sel.options[sel.selectedIndex].text.split(' (')[0];
+  if(!isLive){
+    fetch('/api/meteor/start',{method:'POST',credentials:'include'}).then(()=>{
+      isLive=true;
+      document.getElementById('btnLive').classList.add('on');
+      document.getElementById('liveDot').style.display='inline';
+      setTimeout(()=>{
+        fetch('/api/meteor/capture_now',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({freq:parseFloat(freq),satellite:sat})}).catch(()=>{});
+        poll();pollIv=setInterval(poll,3000);
+      },3000);
+    });
+  } else {
+    fetch('/api/meteor/capture_now',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({freq:parseFloat(freq),satellite:sat})}).catch(()=>{});
+  }
+}
+function updateCaptureButton(){
+  const btn=document.getElementById('btnCapNow');
+  if(data&&data.capturing){
+    btn.innerHTML='<i class="fa-solid fa-stop"></i> Stop Capture';
+    btn.style.borderColor='var(--red)';btn.style.color='var(--red)';
+  } else {
+    btn.innerHTML='<i class="fa-solid fa-play"></i> Capture Now';
+    btn.style.borderColor='';btn.style.color='';
+  }
+}
+
+function toggleLive(){
+  const btn=document.getElementById('btnLive');
+  const dot=document.getElementById('liveDot');
+  if(isLive){
+    isLive=false;clearInterval(pollIv);pollIv=null;
+    btn.classList.remove('on');dot.style.display='none';
+    fetch('/api/meteor/stop',{method:'POST',credentials:'include'}).catch(()=>{});
+  } else {
+    isLive=true;btn.classList.add('on');dot.style.display='inline';
+    fetch('/api/meteor/start',{method:'POST',credentials:'include'}).then(()=>{
+      setTimeout(()=>{poll();pollIv=setInterval(poll,3000)},3000);
+    }).catch(()=>{});
+  }
+}
+
+function fmtDur(s){return Math.floor(s/60)+'m'+('0'+s%60).slice(-2)+'s'}
+
+function poll(){
+  fetch('/api/meteor/live',{credentials:'include'}).then(r=>r.json()).then(d=>{
+    if(!d||!d.ts)return;
+    data=d;
+
+    const badge=document.getElementById('statusBadge');
+    const auto=d.auto_mode?'AUTO \u00b7 ':'';
+    const status=d.status||'idle';
+    if(d.capturing&&status==='decoding'){
+      badge.textContent=auto+'DECODING';badge.className='status-badge status-decoding';
+    } else if(d.capturing){
+      badge.textContent=auto+'CAPTURING';badge.className='status-badge status-capturing';
+    } else if(d.passes&&d.passes.length){
+      badge.textContent=auto+'WAITING';badge.className='status-badge status-waiting';
+    } else {
+      badge.textContent='IDLE';badge.className='status-badge status-idle';
+    }
+
+    document.getElementById('kSat').textContent=d.satellite||'--';
+    document.getElementById('kFreq').textContent=d.frequency||'--';
+
+    // Image
+    const img=document.getElementById('satImage');
+    const overlay=document.getElementById('imageOverlay');
+    if(d.image_path&&d.image_count>0){
+      img.src='/api/meteor/image?t='+Date.now();
+      img.style.display='block';
+      overlay.style.display='none';
+    } else if(d.capturing){
+      img.style.display='none';
+      overlay.style.display='none';
+    } else {
+      img.style.display='none';
+      overlay.style.display='block';
+    }
+
+    // Progress
+    const pbar=document.getElementById('progressBar');
+    if(d.capturing){
+      pbar.style.display='block';
+      document.getElementById('progressFill').style.width=d.progress_pct+'%';
+      if(status==='decoding'){
+        document.getElementById('progressLabel').textContent='Decoding with SatDump...';
+        document.getElementById('captureInfo').textContent=d.satellite+' \u00b7 '+d.frequency+' MHz \u00b7 DECODING';
+      } else {
+        document.getElementById('progressLabel').textContent=d.elapsed+'s / '+d.duration+'s ('+d.progress_pct+'%)';
+        document.getElementById('captureInfo').textContent=d.satellite+' \u00b7 '+d.frequency+' MHz \u00b7 LRPT capture';
+      }
+    } else {
+      pbar.style.display='none';
+      document.getElementById('progressLabel').textContent='';
+      document.getElementById('captureInfo').textContent='';
+    }
+
+    // Next pass countdown
+    if(!d.capturing&&d.passes&&d.passes.length){
+      const next=d.next_pass||d.passes[0];
+      _nextPassTs=next.start_ts||0;
+      document.getElementById('nextPassInfo').textContent='Next: '+next.satellite+' at '+(next.start||'?')+' ('+next.max_el+'\u00b0 max, '+next.direction+', '+fmtDur(next.duration)+')'+(d.auto_mode?' \u00b7 AUTO-CAPTURE':'');
+    } else if(!d.capturing){
+      _nextPassTs=0;
+      document.getElementById('nextPassInfo').textContent='No upcoming passes';
+      document.getElementById('countdownEl').textContent='--';
+    }
+    if(d.capturing)_nextPassTs=0;
+
+    updateCaptureButton();
+    // Passes
+    renderPasses(d.passes||[]);
+    // Gallery
+    renderGallery(d.captures||[]);
+    // Status
+    renderStatus(d);
+    updateMeteorMap();
+  }).catch(()=>{});
+}
+
+function renderPasses(passes){
+  const el=document.getElementById('passList');
+  if(!passes.length){el.innerHTML='<div style="text-align:center;padding:20px;color:#1a3050;font-size:11px"><i class="fa-solid fa-clock" style="font-size:20px;display:block;margin-bottom:6px"></i>No passes predicted<br><span style="font-size:9px">Start the payload to predict passes</span></div>';return}
+  el.innerHTML=passes.map((p,i)=>{
+    const elCol=p.max_el>=60?'var(--green)':p.max_el>=30?'var(--yellow)':'var(--red)';
+    const shortName=p.satellite.replace('METEOR-M2 ','M');
+    return '<div class="pass-row'+(i===0?' next':'')+'">'+
+      '<span class="pass-sat" style="color:var(--accent)">'+shortName+'</span>'+
+      '<span class="pass-time">'+p.start+'</span>'+
+      '<span class="pass-el" style="color:'+elCol+'">'+p.max_el+'\u00b0</span>'+
+      '<span class="pass-dir">'+p.direction+'</span>'+
+      '<span class="pass-dur">'+fmtDur(p.duration)+'</span>'+
+      '<span class="pass-freq">'+p.freq+'MHz</span>'+
+    '</div>';
+  }).join('');
+}
+
+let _galleryHash='';
+function renderGallery(captures){
+  const hash=captures.map(c=>c.file).join(',');
+  if(hash===_galleryHash)return;
+  _galleryHash=hash;
+  const grid=document.getElementById('galleryGrid');
+  const empty=document.getElementById('galleryEmpty');
+  if(!captures.length){grid.innerHTML='';empty.style.display='block';return}
+  empty.style.display='none';
+  const ts=Date.now();
+  grid.innerHTML=captures.map(c=>{
+    return '<div class="gallery-item" onclick="viewImage(\''+c.path.replace(/'/g,"\\'")+'\')">'+
+      '<img src="/api/meteor/image?path='+encodeURIComponent(c.path)+'&t='+ts+'" loading="lazy">'+
+      '<div class="gi-name">'+c.file.replace('.png','')+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function viewImage(path){
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.9);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+  overlay.onclick=function(){document.body.removeChild(overlay)};
+  const img=document.createElement('img');
+  img.src='/api/meteor/image?path='+encodeURIComponent(path)+'&t='+Date.now();
+  img.style.cssText='max-width:95%;max-height:95%;object-fit:contain;border-radius:8px;box-shadow:0 0 40px rgba(0,0,0,.5)';
+  const close=document.createElement('div');
+  close.textContent='\u2715';
+  close.style.cssText='position:absolute;top:16px;right:20px;color:#fff;font-size:24px;cursor:pointer';
+  const name=document.createElement('div');
+  name.textContent=path.split('/').pop().replace('.png','');
+  name.style.cssText='position:absolute;bottom:16px;left:50%;transform:translateX(-50%);color:#888;font-size:11px;font-family:Courier New,monospace';
+  overlay.appendChild(img);overlay.appendChild(close);overlay.appendChild(name);
+  document.body.appendChild(overlay);
+}
+
+function renderStatus(d){
+  const el=document.getElementById('statusContent');
+  const obs=d.observer||{};
+  const status=d.status||'idle';
+  let h='';
+  h+='<div class="stat-row"><span class="sl">Observer</span><span class="sv">'+(obs.lat?obs.lat.toFixed(4)+', '+obs.lon.toFixed(4):'--')+(obs.source?' ('+obs.source+')':'')+'</span></div>';
+  h+='<div class="stat-row"><span class="sl">Altitude</span><span class="sv">'+(obs.alt||0).toFixed(0)+' m</span></div>';
+  h+='<div style="margin:6px 0;display:flex;gap:4px;align-items:center">';
+  h+='<input id="posLat" type="text" placeholder="Lat" style="width:70px;padding:3px 5px;border:1px solid #1a2844;border-radius:3px;background:#0a1020;color:var(--accent);font-size:10px;font-family:Courier New,monospace" value="'+(obs.lat||'')+'">';
+  h+='<input id="posLon" type="text" placeholder="Lon" style="width:70px;padding:3px 5px;border:1px solid #1a2844;border-radius:3px;background:#0a1020;color:var(--accent);font-size:10px;font-family:Courier New,monospace" value="'+(obs.lon||'')+'">';
+  h+='<button onclick="savePosition()" style="padding:3px 8px;border:1px solid #1a2844;border-radius:3px;background:#0a1020;color:#888;font-size:9px;cursor:pointer">Set</button>';
+  h+='</div>';
+  h+='<div class="stat-row"><span class="sl">TLE Age</span><span class="sv">'+(d.tle_age||'--')+'</span></div>';
+  h+='<div class="stat-row"><span class="sl">Upcoming</span><span class="sv">'+(d.passes?d.passes.length:0)+' passes</span></div>';
+  h+='<div class="stat-row"><span class="sl">Captures</span><span class="sv">'+(d.captures?d.captures.length:0)+' images</span></div>';
+  h+='<div class="stat-row"><span class="sl">Status</span><span class="sv" style="color:'+(d.capturing?'var(--red)':'#555')+'">'+status.toUpperCase()+(d.capturing?' \u2014 '+d.satellite:'')+'</span></div>';
+  if(d.capturing){
+    h+='<div class="stat-row"><span class="sl">Progress</span><span class="sv">'+d.progress_pct+'% ('+d.elapsed+'s / '+d.duration+'s)</span></div>';
+    h+='<div class="stat-row"><span class="sl">Images found</span><span class="sv">'+(d.image_count||0)+'</span></div>';
+  }
+  h+='<div style="margin-top:12px;font-size:9px;color:#2a4060">';
+  h+='<b>How it works:</b><br>';
+  h+='Meteor M2 weather satellites orbit at ~830km and pass overhead several times a day. ';
+  h+='They transmit real-time images of Earth on 137.9 MHz using LRPT (Low Rate Picture Transmission), a digital QPSK signal. ';
+  h+='The RTL-SDR captures raw IQ data, which SatDump decodes into color composite images showing ';
+  h+='cloud cover, land, and sea from space.<br><br>';
+  h+='<b>Tips:</b><br>';
+  h+='&bull; Best results with a V-dipole or QFH antenna tuned for 137 MHz<br>';
+  h+='&bull; Higher elevation passes (60&deg;+) give better images<br>';
+  h+='&bull; Capture lasts 10-15 minutes per pass<br>';
+  h+='&bull; LRPT produces color images (visible + infrared channels)';
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+function savePosition(){
+  const lat=parseFloat(document.getElementById('posLat').value);
+  const lon=parseFloat(document.getElementById('posLon').value);
+  if(isNaN(lat)||isNaN(lon)){alert('Invalid coordinates');return}
+  fetch('/api/meteor/set_position',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat:lat,lon:lon})}).then(r=>r.json()).then(d=>{
+    if(d.ok){_meteorMapCentered=false;poll()}
+  }).catch(()=>{});
+}
+
+// Auto-detect running
+fetch('/api/meteor/live',{credentials:'include'}).then(r=>r.json()).then(d=>{
+  if(d&&d.ts>0){
+    data=d;
+    isLive=true;
+    document.getElementById('btnLive').classList.add('on');
+    document.getElementById('liveDot').style.display='inline';
+    poll();pollIv=setInterval(poll,3000);
+  }
+}).catch(()=>{});
+
+// =============================================
+// METEOR MAP -- observer position + satellite ground track
+// =============================================
+let _meteorMap=null,_meteorObsMarker=null,_meteorMapCentered=false,_meteorCircle=null,_meteorPassTracks=[],_meteorPassMarkers=[],_meteorTracksDrawn=false;
+
+function initMeteorMap(){
+  _meteorMap=L.map('meteorMapEl',{zoomControl:true,attributionControl:false,worldCopyJump:true,minZoom:2}).setView([49,0],5);
+  _rjInitMap(_meteorMap);
+  _meteorObsMarker=L.circleMarker([0,0],{radius:6,fillColor:'#00ccff',fillOpacity:1,color:'#fff',weight:2}).addTo(_meteorMap);
+  _meteorCircle=L.circle([0,0],{radius:2500000,color:'#00ccff',weight:1,opacity:0.1,fillOpacity:0.02,dashArray:'6,6'}).addTo(_meteorMap);
+  updateMeteorMap();
+}
+
+function updateMeteorMap(){
+  if(!_meteorMap||!data.observer)return;
+  const obs=data.observer;
+  if(!obs.lat)return;
+  _meteorObsMarker.setLatLng([obs.lat,obs.lon]);
+  _meteorCircle.setLatLng([obs.lat,obs.lon]);
+  _meteorObsMarker.bindPopup('<b>You</b><br>'+obs.lat.toFixed(4)+'\u00b0, '+obs.lon.toFixed(4)+'\u00b0');
+  if(!_meteorMapCentered){_meteorMapCentered=true;_meteorMap.setView([obs.lat,obs.lon],5)}
+
+  // Show real-time satellite positions from SGP4
+  _meteorPassMarkers.forEach(m=>_meteorMap.removeLayer(m));
+  _meteorPassTracks.forEach(t=>_meteorMap.removeLayer(t));
+  _meteorPassMarkers=[];_meteorPassTracks=[];
+
+  const satColors={'METEOR-M2 3':'#ff4444','METEOR-M2 4':'#44aaff'};
+
+  // Draw orbit tracks with time markers
+  const tracks=data.orbit_tracks||{};
+  for(const[name,pts] of Object.entries(tracks)){
+    if(!pts||pts.length<2)continue;
+    const col=satColors[name]||'#ff8800';
+    let segment=[];let segTimes=[];
+    function addSeg(){
+      if(segment.length<2)return;
+      const line=L.polyline(segment,{color:col,weight:1.5,opacity:0.15,dashArray:'4,6'}).addTo(_meteorMap);
+      line.on('click',()=>{
+        _meteorPassTracks.forEach(t=>{t.setStyle({weight:1.5,opacity:0.15})});
+        line.setStyle({weight:3,opacity:0.7});
+      });
+      _meteorPassTracks.push(line);
+    }
+    for(let i=0;i<pts.length;i++){
+      if(segment.length>0&&Math.abs(pts[i][1]-segment[segment.length-1][1])>180){
+        addSeg();segment=[];segTimes=[];
+      }
+      segment.push([pts[i][0],pts[i][1]]);
+      segTimes.push(pts[i][2]||'');
+      // Time markers every 30 min
+      if(pts[i][2]&&i%15===0){
+        const tm=L.circleMarker([pts[i][0],pts[i][1]],{radius:2,fillColor:col,fillOpacity:0.4,color:col,weight:0.5,opacity:0.3}).addTo(_meteorMap);
+        tm.bindTooltip(name.replace('METEOR-M2 ','M')+' \u00b7 '+pts[i][2],{direction:'top',offset:[0,-4],className:'sat-label'});
+        _meteorPassTracks.push(tm);
+      }
+    }
+    addSeg();
+  }
+
+  // Current positions
+  (data.sat_positions||[]).forEach(s=>{
+    const col=satColors[s.satellite]||'#ff8800';
+    const m=L.circleMarker([s.lat,s.lon],{radius:7,fillColor:col,fillOpacity:0.9,color:'#fff',weight:1.5}).addTo(_meteorMap);
+    m.bindTooltip(s.satellite.replace('METEOR-M2 ','M'),{permanent:true,direction:'right',offset:[8,0],className:'sat-label'});
+    m.bindPopup('<b style="color:'+col+'">'+s.satellite+'</b><br>Alt: '+Math.round(s.alt_km)+' km<br>Freq: '+s.freq+' MHz<br>Lat: '+s.lat+'\u00b0<br>Lon: '+s.lon+'\u00b0');
+    _meteorPassMarkers.push(m);
+  });
+
+}
+
+function showManualPos(){
+  fetch('/api/system/location',{credentials:'include'}).then(r=>r.json()).then(d=>{
+    var lat=prompt('Latitude (current: '+(d.lat||'')+' ['+d.source+'])',d.lat||'');
+    if(lat===null)return;
+    var lon=prompt('Longitude (current: '+(d.lon||'')+')',d.lon||'');
+    if(lon===null)return;
+    fetch('/api/system/set_location',{method:'POST',credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({lat:parseFloat(lat),lon:parseFloat(lon)})
+    }).then(r=>r.json()).then(r=>{
+      if(r.ok)alert('Position saved: '+r.lat+', '+r.lon);
+      else alert('Error: '+(r.error||'unknown'));
+    });
+  });
+}
+</script>
+</body>
+</html>
